@@ -1,0 +1,43 @@
+{
+    "workbench.colorTheme": "Default Dark+",
+    "[markdown]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true,
+        "editor.renderWhitespace": "all",
+        "editor.wordWrap": "on",
+        "editor.quickSuggestions": {
+            "other": true,
+            "comments": true,
+            "strings": true
+        },
+        "editor.semanticHighlighting.enabled": true
+    },
+    "markdown.extension.theming.decoration.renderCodeSpan": true,
+    "markdown.extension.toc.levels": "2..6",
+    "markdown.extension.toc.updateOnSave": true,
+    "editor.tokenColorCustomizations": {
+        "[Default Dark+]": {
+            "textMateRules": [
+                {
+                    "scope": "markup.heading",
+                    "settings": {
+                        "foreground": "#569CD6"
+                    }
+                },
+                {
+                    "scope": "markup.bold",
+                    "settings": {
+                        "fontStyle": "bold"
+                    }
+                },
+                {
+                    "scope": "markup.italic",
+                    "settings": {
+                        "fontStyle": "italic"
+                    }
+                }
+            ]
+        }
+    },
+    "java.compile.nullAnalysis.mode": "automatic"
+}
