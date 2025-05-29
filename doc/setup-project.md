@@ -19,3 +19,5 @@
 * package name : de.bas.bodo.woodle, 
 * Packaging: jar ; 
 * use the current folder , don't create a subfolder 
+* add Jsoup as a dependency : `org.jsoup:jsoup:1.20.1`
+  

@@ -1,3 +1,5 @@
+@param de.bas.bodo.woodle.view.ScheduleEventForm formData
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -68,16 +70,16 @@
     <h1>Schedule Event</h1>
     <form action="/schedule-event" method="post">
         <label for="name">Your name *</label>
-        <input type="text" id="name" name="name" required>
+        <input type="text" id="name" name="name" required value="${formData.name() != null ? formData.name() : ""}">
 
         <label for="email">Your email address *</label>
-        <input type="email" id="email" name="email" required>
+        <input type="email" id="email" name="email" required value="${formData.email() != null ? formData.email() : ""}">
 
         <label for="title">Poll title *</label>
-        <input type="text" id="title" name="title" required>
+        <input type="text" id="title" name="title" required value="${formData.title() != null ? formData.title() : ""}">
 
         <label for="description">Description</label>
-        <textarea id="description" name="description"></textarea>
+        <textarea id="description" name="description">${formData.description() != null ? formData.description() : ""}</textarea>
 
         <div class="optional">
             <span class="optional-toggle" onclick="toggleOptional()">Optional parameters &#9660;</span>
@@ -86,7 +88,7 @@
             </div>
         </div>
 
-        <button type="submit">Go to step 2</button>
+        <button type="submit">Next</button>
     </form>
 </body>
 </html> 
