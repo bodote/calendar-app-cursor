@@ -1,4 +1,4 @@
-@param de.bas.bodo.woodle.view.ScheduleEventForm formData
+@param de.bas.bodo.woodle.view.ScheduleEventStep1Form step1FormData
 
 <!DOCTYPE html>
 <html>
@@ -70,16 +70,16 @@
     <h1>Schedule Event</h1>
     <form action="/schedule-event" method="post">
         <label for="name">Your name *</label>
-        <input type="text" id="name" name="name" required value="${formData.name() != null ? formData.name() : ""}">
+        <input type="text" id="name" name="name" required value="${step1FormData.name() != null ? step1FormData.name() : ""}">
 
         <label for="email">Your email address *</label>
-        <input type="email" id="email" name="email" required value="${formData.email() != null ? formData.email() : ""}">
+        <input type="email" id="email" name="email" required value="${step1FormData.email() != null ? step1FormData.email() : ""}">
 
         <label for="title">Poll title *</label>
-        <input type="text" id="title" name="title" required value="${formData.title() != null ? formData.title() : ""}">
+        <input type="text" id="title" name="title" required value="${step1FormData.title() != null ? step1FormData.title() : ""}">
 
         <label for="description">Description</label>
-        <textarea id="description" name="description">${formData.description() != null ? formData.description() : ""}</textarea>
+        <textarea id="description" name="description">${step1FormData.description() != null ? step1FormData.description() : ""}</textarea>
 
         <div class="optional">
             <span class="optional-toggle" onclick="toggleOptional()">Optional parameters &#9660;</span>

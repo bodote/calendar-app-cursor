@@ -10,25 +10,27 @@ import org.springframework.web.bind.support.SessionStatus;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import lombok.Data;
-import de.bas.bodo.woodle.view.ScheduleEventForm;
+import de.bas.bodo.woodle.view.ScheduleEventStep1Form;
 import de.bas.bodo.woodle.view.ScheduleEventStep2Form;
 import de.bas.bodo.woodle.view.ScheduleEventStep3Form;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import org.springframework.web.servlet.view.RedirectView;
 
 @Controller
-@SessionAttributes({ "formData", "step2FormData" })
+@SessionAttributes({ "step1FormData", "step2FormData" })
 public class WoodleViewController {
 
     @GetMapping("/index.html")
-    public String index() {
+    public String index(SessionStatus sessionStatus) {
+        sessionStatus.setComplete();
         return "index";
     }
 
     @GetMapping("/schedule-event")
     public String scheduleEvent(Model model) {
-        if (!model.containsAttribute("formData")) {
-            model.addAttribute("formData", new ScheduleEventForm("", "", "", ""));
+        if (!model.containsAttribute("step1FormData")) {
+            model.addAttribute("step1FormData", new ScheduleEventStep1Form("", "", "", ""));
         }
         return "schedule-event";
     }
@@ -40,8 +42,8 @@ public class WoodleViewController {
             @RequestParam String title,
             @RequestParam(required = false) String description,
             Model model) {
-        ScheduleEventForm formData = new ScheduleEventForm(name, email, title, description);
-        model.addAttribute("formData", formData);
+        ScheduleEventStep1Form formData = new ScheduleEventStep1Form(name, email, title, description);
+        model.addAttribute("step1FormData", formData);
         return ResponseEntity.status(HttpStatus.SEE_OTHER)
                 .header("Location", "/schedule-event-step2")
                 .build();
@@ -54,7 +56,7 @@ public class WoodleViewController {
 
     @GetMapping("/schedule-event-step2")
     public String getScheduleEventStep2(Model model) {
-        if (!model.containsAttribute("formData")) {
+        if (!model.containsAttribute("step1FormData")) {
             return "redirect:/schedule-event";
         }
         if (!model.containsAttribute("step2FormData")) {
@@ -74,23 +76,5 @@ public class WoodleViewController {
         return ResponseEntity.status(HttpStatus.SEE_OTHER)
                 .header("Location", "/schedule-event-step3")
                 .build();
-    }
-
-    @GetMapping("/schedule-event-step3")
-    public String getScheduleEventStep3(Model model) {
-        if (!model.containsAttribute("formData") || !model.containsAttribute("step2FormData")) {
-            return "redirect:/schedule-event";
-        }
-
-        // Calculate default expiry date (3 months from the event date)
-        ScheduleEventStep2Form step2FormData = (ScheduleEventStep2Form) model.getAttribute("step2FormData");
-        LocalDate eventDate = LocalDate.parse(step2FormData.date());
-        LocalDate expiryDate = eventDate.plusMonths(3);
-        String formattedExpiryDate = expiryDate.format(DateTimeFormatter.ISO_DATE);
-
-        if (!model.containsAttribute("step3FormData")) {
-            model.addAttribute("step3FormData", new ScheduleEventStep3Form(formattedExpiryDate));
-        }
-        return "schedule-event-step3";
     }
 }

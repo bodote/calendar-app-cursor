@@ -1,0 +1,28 @@
+spring:
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+  devtools:
+    restart:
+      log-condition-evaluation-delta: true
+
+server:
+  port: 8080
+
+logging:
+  level:
+    root: INFO
+    de.bas.bodo: DEBUG
+
+gg:
+  jte:
+    developmentMode: true
+
+app:
+  s3:
+    bucket-name: de.bas.bodo
+    endpoint: http://localhost:9000
+    access-key: minioadmin
+    secret-key: minioadmin
+  base-url: http://localhost:8080 
