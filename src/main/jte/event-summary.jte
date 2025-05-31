@@ -79,43 +79,47 @@
             Your poll has been created successfully!
         </div>
 
-        <div class="summary-section">
+        <div class="summary-section" data-test-section="poll-details">
             <h2>Poll Details</h2>
-            <div class="summary-item">
+            <div class="summary-item" data-test-item="title">
                 <span class="summary-label">Title:</span>
                 <span>${step1FormData.title()}</span>
             </div>
-            <div class="summary-item">
+            <div class="summary-item" data-test-item="description">
                 <span class="summary-label">Description:</span>
                 <span>${step1FormData.description()}</span>
             </div>
         </div>
 
-        <div class="summary-section">
+        <div class="summary-section" data-test-section="event-details">
             <h2>Event Details</h2>
-            <div class="summary-item">
+            <div class="summary-item" data-test-item="date">
                 <span class="summary-label">Date:</span>
                 <span>${step2FormData.date()}</span>
             </div>
-            <div class="summary-item">
+            <div class="summary-item" data-test-item="time">
                 <span class="summary-label">Time:</span>
                 <span>${step2FormData.startTime()} - ${step2FormData.endTime()}</span>
             </div>
+            <div class="summary-item" data-test-item="expiry-date">
+                <span class="summary-label">Expiry Date:</span>
+                <span>${step3FormData.expiryDate()}</span>
+            </div>
         </div>
 
-        <div class="summary-section">
+        <div class="summary-section" data-test-section="organizer-details">
             <h2>Organizer Details</h2>
-            <div class="summary-item">
+            <div class="summary-item" data-test-item="name">
                 <span class="summary-label">Name:</span>
                 <span>${step1FormData.name()}</span>
             </div>
-            <div class="summary-item">
+            <div class="summary-item" data-test-item="email">
                 <span class="summary-label">Email:</span>
                 <span>${step1FormData.email()}</span>
             </div>
         </div>
 
-        <div class="summary-section">
+        <div class="summary-section" data-test-section="poll-url">
             <h2>Poll URL</h2>
             <div class="poll-url">
                 ${pollUrl}

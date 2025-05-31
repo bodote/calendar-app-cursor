@@ -29,15 +29,18 @@ public class ScheduleEventController {
     }
 
     @PostMapping("/schedule-event-step3")
-    public RedirectView handleStep3Submit(
+    public String handleStep3Submit(
             @RequestParam("expiryDate") String expiryDate,
             HttpSession session,
-            RedirectAttributes redirectAttributes) throws Exception {
+            Model model) throws Exception {
 
         // Get form data from session
         ScheduleEventStep1Form step1Form = (ScheduleEventStep1Form) session.getAttribute("step1FormData");
         ScheduleEventStep2Form step2Form = (ScheduleEventStep2Form) session.getAttribute("step2FormData");
         ScheduleEventStep3Form step3Form = new ScheduleEventStep3Form(expiryDate);
+
+        // Store step3 form data in session
+        session.setAttribute("step3FormData", step3Form);
 
         // Convert string values to LocalDate and LocalTime
         LocalDate eventDate = LocalDate.parse(step2Form.date(), DATE_FORMATTER);
@@ -58,37 +61,47 @@ public class ScheduleEventController {
 
         // Store poll data and get URL
         String pollUrl = pollStorageService.storePoll(pollData);
+        session.setAttribute("pollUrl", pollUrl);
 
         // Add data to model for summary page
-        redirectAttributes.addFlashAttribute("step1FormData", step1Form);
-        redirectAttributes.addFlashAttribute("step2FormData", step2Form);
-        redirectAttributes.addFlashAttribute("step3FormData", step3Form);
-        redirectAttributes.addFlashAttribute("pollUrl", pollUrl);
+        model.addAttribute("step1FormData", step1Form);
+        model.addAttribute("step2FormData", step2Form);
+        model.addAttribute("step3FormData", step3Form);
+        model.addAttribute("pollUrl", pollUrl);
 
-        // Clear session
-        session.invalidate();
-
-        RedirectView redirectView = new RedirectView("/event-summary");
-        redirectView.setHttp10Compatible(false);
-        return redirectView;
+        // Keep session active to allow going back and modifying data
+        return "event-summary";
     }
 
     @GetMapping("/event-summary")
-    public Object showSummary(Model model) {
-        if (!model.containsAttribute("step1FormData") ||
-                !model.containsAttribute("step2FormData") ||
-                !model.containsAttribute("step3FormData") ||
-                !model.containsAttribute("pollUrl")) {
-            RedirectView redirectView = new RedirectView("/");
-            redirectView.setHttp10Compatible(false);
-            return redirectView;
+    public String showSummary(Model model, HttpSession session) {
+        ScheduleEventStep1Form step1Form = (ScheduleEventStep1Form) session.getAttribute("step1FormData");
+        ScheduleEventStep2Form step2Form = (ScheduleEventStep2Form) session.getAttribute("step2FormData");
+        ScheduleEventStep3Form step3Form = (ScheduleEventStep3Form) session.getAttribute("step3FormData");
+        String pollUrl = (String) session.getAttribute("pollUrl");
+
+        if (step1Form == null || step2Form == null || step3Form == null || pollUrl == null) {
+            return "redirect:/";
         }
+
+        model.addAttribute("step1FormData", step1Form);
+        model.addAttribute("step2FormData", step2Form);
+        model.addAttribute("step3FormData", step3Form);
+        model.addAttribute("pollUrl", pollUrl);
+
         return "event-summary";
     }
 
     @GetMapping("/schedule-event-step3")
-    public String showStep3Form(Model model) {
-        model.addAttribute("step3FormData", new ScheduleEventStep3Form(null));
+    public String showStep3Form(Model model, HttpSession session) {
+        ScheduleEventStep2Form step2Form = (ScheduleEventStep2Form) session.getAttribute("step2FormData");
+        if (step2Form != null) {
+            LocalDate eventDate = LocalDate.parse(step2Form.date(), DATE_FORMATTER);
+            LocalDate defaultExpiryDate = eventDate.plusMonths(3);
+            model.addAttribute("step3FormData", new ScheduleEventStep3Form(defaultExpiryDate.format(DATE_FORMATTER)));
+        } else {
+            model.addAttribute("step3FormData", new ScheduleEventStep3Form(null));
+        }
         return "schedule-event-step3";
     }
 }

@@ -22,6 +22,12 @@ assertThat(input.size()).isEqual(1)
 ```
 * when using JTE with forms , use java record to store the form data , don't use classes with public fields.
 * when adding new tests check always if there is any code duplication with previous existing tests and find way to avoid that code duplication
+* for @SpringBootTests use
+   * the src/main/resources/application.yml (not the "application.properties" ) 
+   * don't use a src/test/resources/application.yml, instaead either use a "test" profile and a src/test/resources/application-test.yml or use @TestPropertySource for the @SpringBootTests to overwrite some properties
+ * While not a css-class prefix, using `data-test-` as a prefix for data-test attributes is strongly recommended by libraries like Testing Library. It’s semantically neutral, doesn’t affect CSS styling, and is less likely to be modified by developers working on the UI.
+It aligns with modern testing best practices, especially for accessibility-focused testing frameworks. 
+
 
 
 

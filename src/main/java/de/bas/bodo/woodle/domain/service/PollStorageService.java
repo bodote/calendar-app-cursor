@@ -9,7 +9,9 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
 import de.bas.bodo.woodle.domain.model.PollData;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 public class PollStorageService {
 
@@ -40,6 +42,7 @@ public class PollStorageService {
                 .build();
 
         s3Client.putObject(putObjectRequest, RequestBody.fromString(jsonData));
+        log.info("object successfully stored in s3!");
 
         // Generate and return the poll URL
         return baseUrl + "/poll/" + pollId;

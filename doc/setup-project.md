@@ -20,4 +20,4 @@
 * Packaging: jar ; 
 * use the current folder , don't create a subfolder 
 * add Jsoup as a dependency : `org.jsoup:jsoup:1.20.1`
-  
+* for using Databases or object stores in tests add the the TestContainer dependency  
