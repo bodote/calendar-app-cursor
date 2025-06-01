@@ -1,0 +1,7 @@
+---
+description: When tests are run with e.g. `mvn test` and the error messages from that are evaluated do this:
+globs: 
+alwaysApply: false
+---
+* if there is a problem, enable more debugging output so that we can see, where there problem is 
+* for example: use any debug options to exactly see how spring boot does resolve the requested path if the spring boot does respond with a http status 404 not found

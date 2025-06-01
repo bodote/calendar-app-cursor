@@ -1,0 +1,19 @@
+---
+description: When writing or changing unit tests and test with  `@SpringBootTest` or `@WebMvcTest` do this:
+globs: 
+alwaysApply: false
+---
+* prefer using `@WebMvcTest` over `@SpringBootTest` because `@WebMvcTest` are faster.
+* When writing Spring Boot tests for an HTML page and testing specific elements like icons, forms, and input fields, use MockMvc with HTML Parsers Jsoup: `org.jsoup:jsoup:1.20.1` and use it like this 
+```java 
+// Parse the HTML content with Jsoup
+Document doc = Jsoup.parse(htmlContent);
+// Test for a specific icon (e.g., <i class="fas fa-user"></i>)
+assertThat(doc.select("div[data-test-section='event-details'] div[data-test-item='date']:contains(2024-03-20)")
+            .size()).as("check event date").isEqualTo(1);
+```
+* when adding new tests check always, if there is any code duplication with previous existing tests and find way to avoid that code duplication
+* for @SpringBootTests use
+   * the src/main/resources/application.yml (not the "application.properties" ) 
+   * don't use a src/test/resources/application.yml, instaead either use a "test" profile and a src/test/resources/application-test.yml or use @TestPropertySource for the @SpringBootTests to overwrite some properties
+* to make test more stable for small changes in the html and JTE templates use the HTML `data-*` attribute: e.g. use `data-test-section='event-details'` to tag a html element and use that tag in all test, where you need to find that specific html element. 

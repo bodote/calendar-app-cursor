@@ -10,23 +10,8 @@ e.g. when running the spring boot initializr ask me for the java version i want 
         * Only create stubs or interfaces for services in the domain or port layer until the test requires the real implementation.
         * Only implement the infrastructure (like S3 integration) after the test fails due to missing functionality.
 * use a hexagonal architecture, the code should be organized in a way that the domain logic is separated from the infrastructure code.
-* if there is a problem, enable more debugging output so that we can see, where there problem is 
-* for example: use any debug options to exactly see how spring boot does resolve the requested path if the spring boot does respond with a http status 404 not found
-* When writing Spring Boot tests for an HTML page and testing specific elements like icons, forms, and input fields, use MockMvc with HTML Parsers Jsoup: `org.jsoup:jsoup:1.20.1` and use it like this 
-```java 
-// Parse the HTML content with Jsoup
-Document doc = Jsoup.parse(htmlContent);
-// Test for a specific icon (e.g., <i class="fas fa-user"></i>)
-Elements input = doc.select("input[name=username]");
-assertThat(input.size()).isEqual(1)
-```
 * when using JTE with forms , use java record to store the form data , don't use classes with public fields.
-* when adding new tests check always if there is any code duplication with previous existing tests and find way to avoid that code duplication
-* for @SpringBootTests use
-   * the src/main/resources/application.yml (not the "application.properties" ) 
-   * don't use a src/test/resources/application.yml, instaead either use a "test" profile and a src/test/resources/application-test.yml or use @TestPropertySource for the @SpringBootTests to overwrite some properties
- * While not a css-class prefix, using `data-test-` as a prefix for data-test attributes is strongly recommended by libraries like Testing Library. It’s semantically neutral, doesn’t affect CSS styling, and is less likely to be modified by developers working on the UI.
-It aligns with modern testing best practices, especially for accessibility-focused testing frameworks. 
+ 
 
 
 
