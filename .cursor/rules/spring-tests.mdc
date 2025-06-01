@@ -17,3 +17,4 @@ assertThat(doc.select("div[data-test-section='event-details'] div[data-test-item
    * the src/main/resources/application.yml (not the "application.properties" ) 
    * don't use a src/test/resources/application.yml, instaead either use a "test" profile and a src/test/resources/application-test.yml or use @TestPropertySource for the @SpringBootTests to overwrite some properties
 * to make test more stable for small changes in the html and JTE templates use the HTML `data-*` attribute: e.g. use `data-test-section='event-details'` to tag a html element and use that tag in all test, where you need to find that specific html element. 
+* keep in mind that for redirecting after a `POST` to a `GET` request the status code `303` ist most appropriate.

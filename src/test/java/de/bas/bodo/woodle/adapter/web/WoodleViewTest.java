@@ -42,10 +42,6 @@ import static org.mockito.Mockito.reset;
 @ActiveProfiles({ "test" })
 class WoodleViewTest extends ScenarioTest<GivenWoodleState, WhenWoodleAction, ThenWoodleOutcome> {
 
-        private static final String INDEX_PATH = "/index.html";
-        private static final String EXPECTED_CONTENT = "hello world";
-        private static final String CONTENT_TYPE = "text/html;charset=UTF-8";
-
         @Autowired
         private MockMvc mockMvc;
 
@@ -71,9 +67,6 @@ class WoodleViewTest extends ScenarioTest<GivenWoodleState, WhenWoodleAction, Th
         void setupStages() {
                 MockitoAnnotations.openMocks(this);
                 reset(s3Client); // Reset the mock before each test
-                givenWoodleState.setMockMvc(mockMvc);
-                whenWoodleAction.setMockMvc(mockMvc);
-                thenWoodleOutcome.setMockMvc(mockMvc);
                 thenWoodleOutcome.setS3Client(s3Client);
                 session = new MockHttpSession();
         }
@@ -81,7 +74,8 @@ class WoodleViewTest extends ScenarioTest<GivenWoodleState, WhenWoodleAction, Th
         @Test
         @DisplayName("User can navigate through the scheduling process")
         void user_can_navigate_through_scheduling_process() throws Exception {
-                given().user_is_on_homepage()
+                given().mockMvc_is_set(mockMvc)
+                                .and().user_is_on_homepage()
                                 .and().user_has_test_data(TEST_NAME, TEST_EMAIL, TEST_TITLE, TEST_DESCRIPTION);
                 when().user_clicks_schedule_event_button()
                                 .and().user_fills_step1_form()
@@ -106,7 +100,8 @@ class WoodleViewTest extends ScenarioTest<GivenWoodleState, WhenWoodleAction, Th
         @Test
         @DisplayName("Event data is stored in S3 and can be retrieved")
         void event_data_is_stored_in_s3_and_can_be_retrieved() throws Exception {
-                given().user_is_on_homepage()
+                given().mockMvc_is_set(mockMvc)
+                                .and().user_is_on_homepage()
                                 .and().user_has_test_data(TEST_NAME, TEST_EMAIL, TEST_TITLE, TEST_DESCRIPTION);
                 when().user_clicks_schedule_event_button()
                                 .and().user_fills_step1_form()
@@ -130,6 +125,8 @@ class WoodleViewTest extends ScenarioTest<GivenWoodleState, WhenWoodleAction, Th
                 String startTime = "10:00";
                 String endTime = "11:00";
                 String expiryDate = "2024-06-20";
+
+                given().mockMvc_is_set(mockMvc);
 
                 // When
                 mockMvc.perform(post("/schedule-event")
@@ -167,6 +164,7 @@ class WoodleViewTest extends ScenarioTest<GivenWoodleState, WhenWoodleAction, Th
 
 @org.springframework.stereotype.Component
 class GivenWoodleState extends Stage<GivenWoodleState> {
+        @com.tngtech.jgiven.annotation.ProvidedScenarioState
         private MockMvc mockMvc;
         @ScenarioState
         private MockHttpSession session;
@@ -179,8 +177,9 @@ class GivenWoodleState extends Stage<GivenWoodleState> {
         @ScenarioState
         private String description;
 
-        public void setMockMvc(MockMvc mockMvc) {
+        public GivenWoodleState mockMvc_is_set(MockMvc mockMvc) {
                 this.mockMvc = mockMvc;
+                return self();
         }
 
         public GivenWoodleState user_is_on_homepage() throws Exception {
@@ -207,6 +206,7 @@ class GivenWoodleState extends Stage<GivenWoodleState> {
 
 @org.springframework.stereotype.Component
 class WhenWoodleAction extends Stage<WhenWoodleAction> {
+        @com.tngtech.jgiven.annotation.ExpectedScenarioState
         private MockMvc mockMvc;
         @ScenarioState
         private MockHttpSession session;
@@ -218,10 +218,6 @@ class WhenWoodleAction extends Stage<WhenWoodleAction> {
         private String title;
         @ScenarioState
         private String description;
-
-        public void setMockMvc(MockMvc mockMvc) {
-                this.mockMvc = mockMvc;
-        }
 
         public WhenWoodleAction user_clicks_schedule_event_button() throws Exception {
                 mockMvc.perform(get("/index.html").session(session))
@@ -279,6 +275,7 @@ class WhenWoodleAction extends Stage<WhenWoodleAction> {
 
 @org.springframework.stereotype.Component
 class ThenWoodleOutcome extends Stage<ThenWoodleOutcome> {
+        @com.tngtech.jgiven.annotation.ExpectedScenarioState
         private MockMvc mockMvc;
         private S3Client s3Client;
         @ScenarioState
@@ -291,10 +288,6 @@ class ThenWoodleOutcome extends Stage<ThenWoodleOutcome> {
         private String title;
         @ScenarioState
         private String description;
-
-        public void setMockMvc(MockMvc mockMvc) {
-                this.mockMvc = mockMvc;
-        }
 
         public void setS3Client(S3Client s3Client) {
                 this.s3Client = s3Client;
