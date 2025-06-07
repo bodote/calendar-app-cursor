@@ -1,5 +1,6 @@
 target/
 jte-classes/
+jgiven-reports/
 .DS_Store
 .env
 .env.local
