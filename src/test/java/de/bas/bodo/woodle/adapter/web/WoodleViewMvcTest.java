@@ -11,14 +11,23 @@ import com.tngtech.jgiven.annotation.ScenarioState;
 import com.tngtech.jgiven.junit5.ScenarioTest;
 import com.tngtech.jgiven.annotation.ScenarioStage;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.hamcrest.Matchers.containsString;
 import org.junit.jupiter.api.DisplayName;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import software.amazon.awssdk.services.s3.S3Client;
 import org.springframework.mock.web.MockHttpSession;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import de.bas.bodo.woodle.adapter.web.ScheduleEventController;
+import de.bas.bodo.woodle.domain.service.PollStorageService;
 
-@WebMvcTest(WoodleViewController.class)
+@WebMvcTest({ WoodleViewController.class, ScheduleEventController.class })
 class WoodleViewMvcTest
         extends ScenarioTest<GivenWoodleViewMvcState, WhenWoodleViewMvcAction, ThenWoodleViewMvcOutcome> {
 
@@ -27,6 +36,9 @@ class WoodleViewMvcTest
 
     @MockBean
     private S3Client s3Client;
+
+    @MockBean
+    private PollStorageService pollStorageService;
 
     // Test data constants
     private static final String TEST_NAME = "Alice";
@@ -41,8 +53,11 @@ class WoodleViewMvcTest
     @ScenarioStage
     private ThenWoodleViewMvcOutcome thenWoodleViewMvcOutcome;
 
+    private MockHttpSession session;
+
     @BeforeEach
     void setupStages() {
+        session = new MockHttpSession();
         givenWoodleViewMvcState.user_is_on_homepage();
     }
 
@@ -78,6 +93,54 @@ class WoodleViewMvcTest
         then().user_should_see_summary_page()
                 .and().summary_page_should_show_all_entered_data()
                 .and().summary_page_should_show_event_url();
+    }
+
+    @Test
+    @DisplayName("Should display summary and store in S3")
+    void should_display_summary_and_store_in_s3() throws Exception {
+        // Given
+        String name = "John Doe";
+        String email = "john@example.com";
+        String title = "Team Meeting";
+        String description = "Weekly sync";
+        String date = "2024-03-20";
+        String startTime = "10:00";
+        String endTime = "11:00";
+        String expiryDate = "2024-06-20";
+
+        given().mock_mvc_is_configured(mockMvc);
+
+        // When
+        mockMvc.perform(post("/schedule-event")
+                .param("name", name)
+                .param("email", email)
+                .param("title", title)
+                .param("description", description)
+                .session(session))
+                .andExpect(status().isSeeOther())
+                .andExpect(redirectedUrl("/schedule-event-step2"));
+
+        mockMvc.perform(post("/schedule-event-step2")
+                .param("date", date)
+                .param("startTime", startTime)
+                .param("endTime", endTime)
+                .session(session))
+                .andExpect(status().isSeeOther())
+                .andExpect(redirectedUrl("/schedule-event-step3"));
+
+        mockMvc.perform(post("/schedule-event-step3")
+                .param("expiryDate", expiryDate)
+                .session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Poll Summary")));
+
+        // Then: accessing /event-summary with a new session should redirect to /
+        mockMvc.perform(get("/event-summary"))
+                .andExpect(status().isFound())
+                .andExpect(redirectedUrl("/"));
+
+        // Verify S3 storage
+        verify(s3Client).putObject(any(PutObjectRequest.class), any(RequestBody.class));
     }
 }
 
