@@ -1,35 +1,56 @@
 package de.bas.bodo.woodle.adapter.web;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.BeforeEach;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.test.web.servlet.MockMvc;
-import de.bas.bodo.woodle.view.WoodleViewController;
-import com.tngtech.jgiven.Stage;
-import com.tngtech.jgiven.annotation.ScenarioState;
-import com.tngtech.jgiven.junit5.ScenarioTest;
-import com.tngtech.jgiven.annotation.ScenarioStage;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.hamcrest.Matchers.containsString;
+
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import software.amazon.awssdk.services.s3.S3Client;
+import org.springframework.context.annotation.Import;
 import org.springframework.mock.web.MockHttpSession;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
-import de.bas.bodo.woodle.adapter.web.ScheduleEventController;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tngtech.jgiven.Stage;
+import com.tngtech.jgiven.annotation.ScenarioStage;
+import com.tngtech.jgiven.annotation.ScenarioState;
+import com.tngtech.jgiven.junit5.ScenarioTest;
+
+import de.bas.bodo.woodle.config.WebMvcTestConfig;
 import de.bas.bodo.woodle.domain.service.PollStorageService;
+import de.bas.bodo.woodle.view.WoodleViewController;
+import gg.jte.springframework.boot.autoconfigure.JteAutoConfiguration;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 @WebMvcTest({ WoodleViewController.class, ScheduleEventController.class })
+@ImportAutoConfiguration(JteAutoConfiguration.class)
+@Import({ WebMvcTestConfig.class, PollStorageService.class })
+@ActiveProfiles({ "test" })
+@TestPropertySource(properties = {
+        "gg.jte.development-mode=true",
+        "app.s3.bucket-name=de.bas.bodo",
+        "app.base-url=http://localhost:8080"
+})
 class WoodleViewMvcTest
         extends ScenarioTest<GivenWoodleViewMvcState, WhenWoodleViewMvcAction, ThenWoodleViewMvcOutcome> {
+
+    private static final Logger log = LoggerFactory.getLogger(WoodleViewMvcTest.class);
 
     @Autowired
     private MockMvc mockMvc;
@@ -37,8 +58,8 @@ class WoodleViewMvcTest
     @MockBean
     private S3Client s3Client;
 
-    @MockBean
-    private PollStorageService pollStorageService;
+    @Autowired
+    private ObjectMapper objectMapper;
 
     // Test data constants
     private static final String TEST_NAME = "Alice";
@@ -128,11 +149,26 @@ class WoodleViewMvcTest
                 .andExpect(status().isSeeOther())
                 .andExpect(redirectedUrl("/schedule-event-step3"));
 
-        mockMvc.perform(post("/schedule-event-step3")
+        MvcResult result = mockMvc.perform(post("/schedule-event-step3")
                 .param("expiryDate", expiryDate)
                 .session(session))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Poll Summary")));
+                .andReturn();
+
+        // Log the response content for debugging
+        log.info("Response content: {}", result.getResponse().getContentAsString());
+
+        // Verify the response contains expected content
+        String responseContent = result.getResponse().getContentAsString();
+        assertThat(responseContent)
+                .contains(name)
+                .contains(email)
+                .contains(title)
+                .contains(description)
+                .contains(date)
+                .contains(startTime)
+                .contains(endTime)
+                .contains(expiryDate);
 
         // Then: accessing /event-summary with a new session should redirect to /
         mockMvc.perform(get("/event-summary"))

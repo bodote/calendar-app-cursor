@@ -1,15 +1,18 @@
 package de.bas.bodo.woodle.domain.service;
 
+import java.util.UUID;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import de.bas.bodo.woodle.domain.model.PollData;
+import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.UUID;
-import de.bas.bodo.woodle.domain.model.PollData;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
