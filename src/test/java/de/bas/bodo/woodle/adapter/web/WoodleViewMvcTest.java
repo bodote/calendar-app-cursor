@@ -23,6 +23,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.ResultActions;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tngtech.jgiven.Stage;
@@ -185,6 +186,14 @@ class GivenWoodleViewMvcState extends Stage<GivenWoodleViewMvcState> {
     private MockMvc mockMvc;
     @ScenarioState
     private MockHttpSession session;
+    @ScenarioState
+    private String name;
+    @ScenarioState
+    private String email;
+    @ScenarioState
+    private String title;
+    @ScenarioState
+    private String description;
 
     public GivenWoodleViewMvcState mock_mvc_is_configured(MockMvc mockMvc) {
         this.mockMvc = mockMvc;
@@ -197,7 +206,10 @@ class GivenWoodleViewMvcState extends Stage<GivenWoodleViewMvcState> {
     }
 
     public GivenWoodleViewMvcState user_has_test_data(String name, String email, String title, String description) {
-        // Implementation of user_has_test_data method
+        this.name = name;
+        this.email = email;
+        this.title = title;
+        this.description = description;
         return self();
     }
 }
@@ -205,45 +217,69 @@ class GivenWoodleViewMvcState extends Stage<GivenWoodleViewMvcState> {
 class WhenWoodleViewMvcAction extends Stage<WhenWoodleViewMvcAction> {
     @ScenarioState
     private MockMvc mockMvc;
+    @ScenarioState
+    private MockHttpSession session;
+    @ScenarioState
+    private ResultActions resultAction;
+    @ScenarioState
+    private String name;
+    @ScenarioState
+    private String email;
+    @ScenarioState
+    private String title;
+    @ScenarioState
+    private String description;
 
     public WhenWoodleViewMvcAction user_visits_root_path() throws Exception {
-        mockMvc.perform(get("/"));
+        resultAction = mockMvc.perform(get("/"));
         return self();
     }
 
     public WhenWoodleViewMvcAction user_clicks_schedule_event_button() throws Exception {
-        // Implementation of user_clicks_schedule_event_button method
+        resultAction = mockMvc.perform(get("/schedule-event").session(session));
         return self();
     }
 
     public WhenWoodleViewMvcAction user_fills_step1_form() throws Exception {
-        // Implementation of user_fills_step1_form method
+        resultAction = mockMvc.perform(post("/schedule-event")
+                .param("name", name)
+                .param("email", email)
+                .param("title", title)
+                .param("description", description)
+                .session(session));
         return self();
     }
 
     public WhenWoodleViewMvcAction user_clicks_next() throws Exception {
-        // Implementation of user_clicks_next method
+        // The next action depends on the current step
+        // This will be handled by the specific form submission methods
         return self();
     }
 
     public WhenWoodleViewMvcAction user_clicks_back() throws Exception {
-        // Implementation of user_clicks_back method
+        resultAction = mockMvc.perform(get("/schedule-event").session(session));
         return self();
     }
 
     public WhenWoodleViewMvcAction user_fills_step2_form(String date, String startTime, String endTime)
             throws Exception {
-        // Implementation of user_fills_step2_form method
+        resultAction = mockMvc.perform(post("/schedule-event-step2")
+                .param("date", date)
+                .param("startTime", startTime)
+                .param("endTime", endTime)
+                .session(session));
         return self();
     }
 
     public WhenWoodleViewMvcAction user_fills_step3_form(String expiryDate) throws Exception {
-        // Implementation of user_fills_step3_form method
+        resultAction = mockMvc.perform(post("/schedule-event-step3")
+                .param("expiryDate", expiryDate)
+                .session(session));
         return self();
     }
 
     public WhenWoodleViewMvcAction user_clicks_create_poll() throws Exception {
-        // Implementation of user_clicks_create_poll method
+        // The form submission is handled in user_fills_step3_form
         return self();
     }
 }
@@ -251,56 +287,95 @@ class WhenWoodleViewMvcAction extends Stage<WhenWoodleViewMvcAction> {
 class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
     @ScenarioState
     private MockMvc mockMvc;
+    @ScenarioState
+    private MockHttpSession session;
+    @ScenarioState
+    private ResultActions resultAction;
+    @ScenarioState
+    private String name;
+    @ScenarioState
+    private String email;
+    @ScenarioState
+    private String title;
+    @ScenarioState
+    private String description;
 
     public ThenWoodleViewMvcOutcome user_should_be_redirected_to_index_html() throws Exception {
-        mockMvc.perform(get("/"))
-                .andExpect(status().isFound())
+        resultAction.andExpect(status().isFound())
                 .andExpect(redirectedUrl("/index.html"));
         return self();
     }
 
     public ThenWoodleViewMvcOutcome user_should_see_step2_form() throws Exception {
-        // Implementation of user_should_see_step2_form method
+        resultAction.andExpect(status().isOk());
         return self();
     }
 
     public ThenWoodleViewMvcOutcome step2_form_should_have_all_required_fields() throws Exception {
-        // Implementation of step2_form_should_have_all_required_fields method
+        MvcResult result = resultAction.andReturn();
+        String content = result.getResponse().getContentAsString();
+        assertThat(content).contains("input[type=date][id=date][name=date]")
+                .contains("input[type=time][id=startTime][name=startTime]")
+                .contains("input[type=time][id=endTime][name=endTime]");
         return self();
     }
 
     public ThenWoodleViewMvcOutcome user_should_see_step1_form_with_previous_data() throws Exception {
-        // Implementation of user_should_see_step1_form_with_previous_data method
+        MvcResult result = resultAction.andReturn();
+        String content = result.getResponse().getContentAsString();
+        assertThat(content).contains("value=\"" + name + "\"")
+                .contains("value=\"" + email + "\"")
+                .contains("value=\"" + title + "\"")
+                .contains(description);
         return self();
     }
 
     public ThenWoodleViewMvcOutcome user_should_see_step3_form() throws Exception {
-        // Implementation of user_should_see_step3_form method
+        resultAction.andExpect(status().isOk());
         return self();
     }
 
-    public ThenWoodleViewMvcOutcome step3_form_should_have_expiry_date(String expiryDate) throws Exception {
-        // Implementation of step3_form_should_have_expiry_date method
+    public ThenWoodleViewMvcOutcome step3_form_should_have_expiry_date(String expectedDate) throws Exception {
+        MvcResult result = resultAction.andReturn();
+        String content = result.getResponse().getContentAsString();
+        assertThat(content).contains("input[type=date][id=expiryDate][name=expiryDate]")
+                .contains("value=\"" + expectedDate + "\"");
         return self();
     }
 
     public ThenWoodleViewMvcOutcome user_should_see_step2_form_with_previous_data() throws Exception {
-        // Implementation of user_should_see_step2_form_with_previous_data method
+        MvcResult result = resultAction.andReturn();
+        String content = result.getResponse().getContentAsString();
+        assertThat(content).contains("value=\"2024-03-20\"")
+                .contains("value=\"10:00\"")
+                .contains("value=\"11:00\"");
         return self();
     }
 
     public ThenWoodleViewMvcOutcome user_should_see_summary_page() throws Exception {
-        // Implementation of user_should_see_summary_page method
+        resultAction.andExpect(status().isOk());
         return self();
     }
 
     public ThenWoodleViewMvcOutcome summary_page_should_show_all_entered_data() throws Exception {
-        // Implementation of summary_page_should_show_all_entered_data method
+        MvcResult result = resultAction.andReturn();
+        String content = result.getResponse().getContentAsString();
+        assertThat(content)
+                .contains(name)
+                .contains(email)
+                .contains(title)
+                .contains(description)
+                .contains("2024-03-20")
+                .contains("10:00")
+                .contains("11:00")
+                .contains("2024-06-20");
         return self();
     }
 
     public ThenWoodleViewMvcOutcome summary_page_should_show_event_url() throws Exception {
-        // Implementation of summary_page_should_show_event_url method
+        MvcResult result = resultAction.andReturn();
+        String content = result.getResponse().getContentAsString();
+        assertThat(content).contains("http://localhost:8080/poll/");
         return self();
     }
 }
