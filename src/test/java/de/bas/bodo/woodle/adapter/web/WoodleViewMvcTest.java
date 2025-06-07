@@ -8,6 +8,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.select.Elements;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -215,6 +221,8 @@ class GivenWoodleViewMvcState extends Stage<GivenWoodleViewMvcState> {
 }
 
 class WhenWoodleViewMvcAction extends Stage<WhenWoodleViewMvcAction> {
+    private static final Logger log = LoggerFactory.getLogger(WhenWoodleViewMvcAction.class);
+
     @ScenarioState
     private MockMvc mockMvc;
     @ScenarioState
@@ -229,18 +237,51 @@ class WhenWoodleViewMvcAction extends Stage<WhenWoodleViewMvcAction> {
     private String title;
     @ScenarioState
     private String description;
+    @ScenarioState
+    private List<String> navigationHistory = new ArrayList<>();
+    @ScenarioState
+    private String currentPage;
+
+    private void addToHistory(String page) {
+        log.info("Adding to history - Current page: {}, New page: {}, History size: {}",
+                currentPage, page, navigationHistory.size());
+
+        // Validate navigation path
+        if (currentPage != null) {
+            boolean isValidNavigation = switch (currentPage) {
+                case "/schedule-event" -> page.equals("/schedule-event-step2");
+                case "/schedule-event-step2" -> page.equals("/schedule-event-step3") || page.equals("/schedule-event");
+                case "/schedule-event-step3" -> page.equals("/schedule-event-step2");
+                default -> false;
+            };
+
+            if (!isValidNavigation) {
+                log.warn("Invalid navigation from {} to {}", currentPage, page);
+                return;
+            }
+
+            if (!currentPage.equals(page)) {
+                navigationHistory.add(currentPage);
+                log.info("Added {} to history. New history: {}", currentPage, navigationHistory);
+            }
+        }
+        currentPage = page;
+    }
 
     public WhenWoodleViewMvcAction user_visits_root_path() throws Exception {
+        log.info("Performing GET /");
         resultAction = mockMvc.perform(get("/"));
         return self();
     }
 
     public WhenWoodleViewMvcAction user_clicks_schedule_event_button() throws Exception {
+        log.info("Performing GET /schedule-event");
         resultAction = mockMvc.perform(get("/schedule-event").session(session));
         return self();
     }
 
     public WhenWoodleViewMvcAction user_fills_step1_form() throws Exception {
+        log.info("Performing POST /schedule-event with form data");
         resultAction = mockMvc.perform(post("/schedule-event")
                 .param("name", name)
                 .param("email", email)
@@ -257,12 +298,32 @@ class WhenWoodleViewMvcAction extends Stage<WhenWoodleViewMvcAction> {
     }
 
     public WhenWoodleViewMvcAction user_clicks_back() throws Exception {
-        resultAction = mockMvc.perform(get("/schedule-event").session(session));
+        // Get the current page content
+        MvcResult currentResult = resultAction.andReturn();
+        String content = currentResult.getResponse().getContentAsString();
+        Document doc = Jsoup.parse(content);
+
+        // Find the back button and verify it has the correct onclick handler
+        Elements backButtons = doc.select("button[type=button]");
+        assertThat(backButtons).isNotEmpty();
+        assertThat(backButtons.attr("onclick")).isEqualTo("window.history.back()");
+
+        // Simulate browser's back behavior by going to the previous page in our history
+        if (!navigationHistory.isEmpty()) {
+            String previousPage = navigationHistory.remove(navigationHistory.size() - 1);
+            log.info("Navigating back to: {}", previousPage);
+            resultAction = mockMvc.perform(get(previousPage).session(session));
+        } else {
+            // If no history, go to the first step
+            log.info("No history, going to first step: /schedule-event");
+            resultAction = mockMvc.perform(get("/schedule-event").session(session));
+        }
         return self();
     }
 
     public WhenWoodleViewMvcAction user_fills_step2_form(String date, String startTime, String endTime)
             throws Exception {
+        log.info("Performing POST /schedule-event-step2 with form data");
         resultAction = mockMvc.perform(post("/schedule-event-step2")
                 .param("date", date)
                 .param("startTime", startTime)
@@ -272,6 +333,7 @@ class WhenWoodleViewMvcAction extends Stage<WhenWoodleViewMvcAction> {
     }
 
     public WhenWoodleViewMvcAction user_fills_step3_form(String expiryDate) throws Exception {
+        log.info("Performing POST /schedule-event-step3 with form data");
         resultAction = mockMvc.perform(post("/schedule-event-step3")
                 .param("expiryDate", expiryDate)
                 .session(session));
@@ -285,6 +347,8 @@ class WhenWoodleViewMvcAction extends Stage<WhenWoodleViewMvcAction> {
 }
 
 class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
+    private static final Logger log = LoggerFactory.getLogger(ThenWoodleViewMvcOutcome.class);
+
     @ScenarioState
     private MockMvc mockMvc;
     @ScenarioState
@@ -299,61 +363,128 @@ class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
     private String title;
     @ScenarioState
     private String description;
+    @ScenarioState
+    private List<String> navigationHistory;
+    @ScenarioState
+    private String currentPage;
+
+    private void addToHistory(String page) {
+        log.info("Adding to history - Current page: {}, New page: {}, History size: {}",
+                currentPage, page, navigationHistory.size());
+
+        // Validate navigation path
+        if (currentPage != null) {
+            boolean isValidNavigation = switch (currentPage) {
+                case "/schedule-event" -> page.equals("/schedule-event-step2");
+                case "/schedule-event-step2" -> page.equals("/schedule-event-step3") || page.equals("/schedule-event");
+                case "/schedule-event-step3" -> page.equals("/schedule-event-step2");
+                default -> false;
+            };
+
+            if (!isValidNavigation) {
+                log.warn("Invalid navigation from {} to {}", currentPage, page);
+                return;
+            }
+
+            if (!currentPage.equals(page)) {
+                navigationHistory.add(currentPage);
+                log.info("Added {} to history. New history: {}", currentPage, navigationHistory);
+            }
+        }
+        currentPage = page;
+    }
 
     public ThenWoodleViewMvcOutcome user_should_be_redirected_to_index_html() throws Exception {
+        log.info("Verifying redirect to index.html");
         resultAction.andExpect(status().isFound())
                 .andExpect(redirectedUrl("/index.html"));
+        addToHistory("/index.html");
         return self();
     }
 
     public ThenWoodleViewMvcOutcome user_should_see_step2_form() throws Exception {
+        log.info("Verifying redirect to step2 form");
+        resultAction.andExpect(status().isSeeOther())
+                .andExpect(redirectedUrl("/schedule-event-step2"));
+        // Follow the redirect
+        log.info("Following redirect to /schedule-event-step2");
+        resultAction = mockMvc.perform(get("/schedule-event-step2").session(session));
         resultAction.andExpect(status().isOk());
+        addToHistory("/schedule-event-step2");
         return self();
     }
 
     public ThenWoodleViewMvcOutcome step2_form_should_have_all_required_fields() throws Exception {
         MvcResult result = resultAction.andReturn();
         String content = result.getResponse().getContentAsString();
-        assertThat(content).contains("input[type=date][id=date][name=date]")
-                .contains("input[type=time][id=startTime][name=startTime]")
-                .contains("input[type=time][id=endTime][name=endTime]");
+        org.jsoup.nodes.Document doc = org.jsoup.Jsoup.parse(content);
+        // Check for date input
+        org.jsoup.select.Elements dateInputs = doc.select("input[type=date][id=date][name=date]");
+        org.jsoup.select.Elements startTimeInputs = doc.select("input[type=time][id=startTime][name=startTime]");
+        org.jsoup.select.Elements endTimeInputs = doc.select("input[type=time][id=endTime][name=endTime]");
+        org.jsoup.select.Elements backButtons = doc.select("button[type=button]");
+        org.jsoup.select.Elements nextButtons = doc.select("button[type=submit]");
+        org.assertj.core.api.Assertions.assertThat(dateInputs.size()).isEqualTo(1);
+        org.assertj.core.api.Assertions.assertThat(startTimeInputs.size()).isEqualTo(1);
+        org.assertj.core.api.Assertions.assertThat(endTimeInputs.size()).isEqualTo(1);
+        org.assertj.core.api.Assertions.assertThat(backButtons.text()).containsIgnoringCase("back");
+        org.assertj.core.api.Assertions.assertThat(nextButtons.text()).containsIgnoringCase("next");
         return self();
     }
 
     public ThenWoodleViewMvcOutcome user_should_see_step1_form_with_previous_data() throws Exception {
+        log.info("Verifying step1 form with previous data");
         MvcResult result = resultAction.andReturn();
         String content = result.getResponse().getContentAsString();
         assertThat(content).contains("value=\"" + name + "\"")
                 .contains("value=\"" + email + "\"")
                 .contains("value=\"" + title + "\"")
                 .contains(description);
+        addToHistory("/schedule-event");
         return self();
     }
 
     public ThenWoodleViewMvcOutcome user_should_see_step3_form() throws Exception {
+        log.info("Verifying redirect to step3 form");
+        resultAction.andExpect(status().isSeeOther())
+                .andExpect(redirectedUrl("/schedule-event-step3"));
+        // Follow the redirect
+        log.info("Following redirect to /schedule-event-step3");
+        resultAction = mockMvc.perform(get("/schedule-event-step3").session(session));
         resultAction.andExpect(status().isOk());
+        addToHistory("/schedule-event-step3");
         return self();
     }
 
     public ThenWoodleViewMvcOutcome step3_form_should_have_expiry_date(String expectedDate) throws Exception {
         MvcResult result = resultAction.andReturn();
         String content = result.getResponse().getContentAsString();
-        assertThat(content).contains("input[type=date][id=expiryDate][name=expiryDate]")
-                .contains("value=\"" + expectedDate + "\"");
+        Document doc = Jsoup.parse(content);
+        String expiryValue = doc.select("input[type=date][id=expiryDate][name=expiryDate]").attr("value");
+        assertThat(expiryValue).isEqualTo(expectedDate);
         return self();
     }
 
     public ThenWoodleViewMvcOutcome user_should_see_step2_form_with_previous_data() throws Exception {
+        log.info("Verifying step2 form with previous data");
         MvcResult result = resultAction.andReturn();
         String content = result.getResponse().getContentAsString();
-        assertThat(content).contains("value=\"2024-03-20\"")
-                .contains("value=\"10:00\"")
-                .contains("value=\"11:00\"");
+        Document doc = Jsoup.parse(content);
+        assertThat(doc.select("input[name=date]").attr("value")).isEqualTo("2024-03-20");
+        assertThat(doc.select("input[name=startTime]").attr("value")).isEqualTo("10:00");
+        assertThat(doc.select("input[name=endTime]").attr("value")).isEqualTo("11:00");
+        addToHistory("/schedule-event-step2");
         return self();
     }
 
     public ThenWoodleViewMvcOutcome user_should_see_summary_page() throws Exception {
+        log.info("Verifying summary page");
         resultAction.andExpect(status().isOk());
+        MvcResult result = resultAction.andReturn();
+        String content = result.getResponse().getContentAsString();
+        Document doc = Jsoup.parse(content);
+        assertThat(doc.select("h1:contains(Poll Summary)").size()).isEqualTo(1);
+        addToHistory("/event-summary");
         return self();
     }
 
