@@ -2,12 +2,16 @@ package de.bas.bodo.woodle.adapter.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.io.ByteArrayInputStream;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,11 +42,15 @@ import com.tngtech.jgiven.annotation.ScenarioState;
 import com.tngtech.jgiven.junit5.ScenarioTest;
 
 import de.bas.bodo.woodle.config.WebMvcTestConfig;
+import de.bas.bodo.woodle.domain.model.PollData;
 import de.bas.bodo.woodle.domain.service.PollStorageService;
 import de.bas.bodo.woodle.view.WoodleViewController;
 import gg.jte.springframework.boot.autoconfigure.JteAutoConfiguration;
+import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 @WebMvcTest({ WoodleViewController.class, ScheduleEventController.class })
@@ -86,7 +94,8 @@ class WoodleViewMvcTest
     @BeforeEach
     void setupStages() {
         session = new MockHttpSession();
-        givenWoodleViewMvcState.user_is_on_homepage();
+        givenWoodleViewMvcState.mock_mvc_is_configured(mockMvc)
+                .and().object_mapper_is_configured(objectMapper);
     }
 
     @Test
@@ -104,20 +113,17 @@ class WoodleViewMvcTest
                 .and().user_is_on_homepage()
                 .and().user_has_test_data(TEST_NAME, TEST_EMAIL, TEST_TITLE, TEST_DESCRIPTION);
         when().user_clicks_schedule_event_button()
-                .and().user_fills_step1_form()
-                .and().user_clicks_next();
+                .and().user_sets_input_fields_on_schedule_event_page_and_clicks_next();
         then().user_should_see_step2_form()
                 .and().step2_form_should_have_all_required_fields();
         when().user_clicks_back();
         then().user_should_see_step1_form_with_previous_data();
-        when().user_fills_step2_form("2024-03-20", "10:00", "11:00")
-                .and().user_clicks_next();
+        when().user_sets_input_fields_on_schedule_event_step2_and_clicks_next();
         then().user_should_see_step3_form()
                 .and().step3_form_should_have_expiry_date("2024-06-20");
         when().user_clicks_back();
         then().user_should_see_step2_form_with_previous_data();
-        when().user_fills_step3_form("2024-06-20")
-                .and().user_clicks_create_poll();
+        when().user_sets_input_fields_on_schedule_event_step3_and_clicks_next();
         then().user_should_see_summary_page()
                 .and().summary_page_should_show_all_entered_data()
                 .and().summary_page_should_show_event_url();
@@ -126,64 +132,31 @@ class WoodleViewMvcTest
     @Test
     @DisplayName("Should display summary and store in S3")
     void should_display_summary_and_store_in_s3() throws Exception {
-        // Given
-        String name = "John Doe";
-        String email = "john@example.com";
-        String title = "Team Meeting";
-        String description = "Weekly sync";
-        String date = "2024-03-20";
-        String startTime = "10:00";
-        String endTime = "11:00";
-        String expiryDate = "2024-06-20";
+        given().mock_mvc_is_configured(mockMvc)
+                .and().s3_client_is_configured(s3Client)
+                .and().user_is_on_homepage()
+                .and().user_has_test_data("John Doe", "john@example.com", "Team Meeting", "Weekly sync");
+        when().user_clicks_schedule_event_button()
+                .and().user_sets_input_fields_on_schedule_event_page_and_clicks_next()
+                .and().user_sets_input_fields_on_schedule_event_step2_and_clicks_next()
+                .and().user_sets_input_fields_on_schedule_event_step3_and_clicks_next();
+        then().user_should_see_summary_page()
+                .and().summary_page_should_show_all_entered_data()
+                .and().summary_page_should_show_event_url()
+                .and().poll_should_be_stored_in_s3();
+    }
 
-        given().mock_mvc_is_configured(mockMvc);
-
-        // When
-        mockMvc.perform(post("/schedule-event")
-                .param("name", name)
-                .param("email", email)
-                .param("title", title)
-                .param("description", description)
-                .session(session))
-                .andExpect(status().isSeeOther())
-                .andExpect(redirectedUrl("/schedule-event-step2"));
-
-        mockMvc.perform(post("/schedule-event-step2")
-                .param("date", date)
-                .param("startTime", startTime)
-                .param("endTime", endTime)
-                .session(session))
-                .andExpect(status().isSeeOther())
-                .andExpect(redirectedUrl("/schedule-event-step3"));
-
-        MvcResult result = mockMvc.perform(post("/schedule-event-step3")
-                .param("expiryDate", expiryDate)
-                .session(session))
-                .andExpect(status().isOk())
-                .andReturn();
-
-        // Log the response content for debugging
-        log.info("Response content: {}", result.getResponse().getContentAsString());
-
-        // Verify the response contains expected content
-        String responseContent = result.getResponse().getContentAsString();
-        assertThat(responseContent)
-                .contains(name)
-                .contains(email)
-                .contains(title)
-                .contains(description)
-                .contains(date)
-                .contains(startTime)
-                .contains(endTime)
-                .contains(expiryDate);
-
-        // Then: accessing /event-summary with a new session should redirect to /
-        mockMvc.perform(get("/event-summary"))
-                .andExpect(status().isFound())
-                .andExpect(redirectedUrl("/"));
-
-        // Verify S3 storage
-        verify(s3Client).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+    @Test
+    @DisplayName("Should access summary page later without session")
+    void should_access_summary_page_later_without_session() throws Exception {
+        String testUuid = "123e4567-e89b-12d3-a456-426614174000";
+        given().mock_mvc_is_configured(mockMvc)
+                .and().s3_client_is_configured(s3Client)
+                .and().user_has_test_data("John Doe", "john@example.com", "Team Meeting", "Weekly sync")
+                .and().s3_client_returns_test_event_for_uuid(testUuid);
+        when().user_accesses_event_url_without_session(testUuid);
+        then().user_should_see_summary_page()
+                .and().summary_page_should_show_all_entered_data();
     }
 }
 
@@ -200,9 +173,23 @@ class GivenWoodleViewMvcState extends Stage<GivenWoodleViewMvcState> {
     private String title;
     @ScenarioState
     private String description;
+    @ScenarioState
+    private S3Client s3Client;
+    @ScenarioState
+    private ObjectMapper objectMapper;
 
     public GivenWoodleViewMvcState mock_mvc_is_configured(MockMvc mockMvc) {
         this.mockMvc = mockMvc;
+        return self();
+    }
+
+    public GivenWoodleViewMvcState object_mapper_is_configured(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+        return self();
+    }
+
+    public GivenWoodleViewMvcState s3_client_is_configured(S3Client s3Client) {
+        this.s3Client = s3Client;
         return self();
     }
 
@@ -216,6 +203,26 @@ class GivenWoodleViewMvcState extends Stage<GivenWoodleViewMvcState> {
         this.email = email;
         this.title = title;
         this.description = description;
+        return self();
+    }
+
+    public GivenWoodleViewMvcState s3_client_returns_test_event_for_uuid(String uuid) throws Exception {
+        PollData testEvent = new PollData(
+                "John Doe",
+                "john@example.com",
+                "Team Meeting",
+                "Weekly sync",
+                LocalDate.parse("2024-03-20"),
+                LocalTime.parse("10:00"),
+                LocalTime.parse("11:00"),
+                LocalDate.parse("2024-06-20"));
+
+        String jsonData = objectMapper.writeValueAsString(testEvent);
+        GetObjectResponse response = GetObjectResponse.builder().build();
+        ResponseInputStream<GetObjectResponse> responseStream = new ResponseInputStream<>(
+                response,
+                new ByteArrayInputStream(jsonData.getBytes()));
+        doReturn(responseStream).when(s3Client).getObject(any(GetObjectRequest.class));
         return self();
     }
 }
@@ -241,6 +248,8 @@ class WhenWoodleViewMvcAction extends Stage<WhenWoodleViewMvcAction> {
     private List<String> navigationHistory = new ArrayList<>();
     @ScenarioState
     private String currentPage;
+    @ScenarioState
+    private String eventUrl;
 
     private void addToHistory(String page) {
         log.info("Adding to history - Current page: {}, New page: {}, History size: {}",
@@ -280,20 +289,14 @@ class WhenWoodleViewMvcAction extends Stage<WhenWoodleViewMvcAction> {
         return self();
     }
 
-    public WhenWoodleViewMvcAction user_fills_step1_form() throws Exception {
-        log.info("Performing POST /schedule-event with form data");
+    public WhenWoodleViewMvcAction user_sets_input_fields_on_schedule_event_page_and_clicks_next() throws Exception {
+        log.info("Setting input fields on schedule event page and submitting");
         resultAction = mockMvc.perform(post("/schedule-event")
                 .param("name", name)
                 .param("email", email)
                 .param("title", title)
                 .param("description", description)
                 .session(session));
-        return self();
-    }
-
-    public WhenWoodleViewMvcAction user_clicks_next() throws Exception {
-        // The next action depends on the current step
-        // This will be handled by the specific form submission methods
         return self();
     }
 
@@ -321,27 +324,26 @@ class WhenWoodleViewMvcAction extends Stage<WhenWoodleViewMvcAction> {
         return self();
     }
 
-    public WhenWoodleViewMvcAction user_fills_step2_form(String date, String startTime, String endTime)
-            throws Exception {
-        log.info("Performing POST /schedule-event-step2 with form data");
+    public WhenWoodleViewMvcAction user_sets_input_fields_on_schedule_event_step2_and_clicks_next() throws Exception {
+        log.info("Setting input fields on schedule event step2 and submitting");
         resultAction = mockMvc.perform(post("/schedule-event-step2")
-                .param("date", date)
-                .param("startTime", startTime)
-                .param("endTime", endTime)
+                .param("date", "2024-03-20")
+                .param("startTime", "10:00")
+                .param("endTime", "11:00")
                 .session(session));
         return self();
     }
 
-    public WhenWoodleViewMvcAction user_fills_step3_form(String expiryDate) throws Exception {
-        log.info("Performing POST /schedule-event-step3 with form data");
+    public WhenWoodleViewMvcAction user_sets_input_fields_on_schedule_event_step3_and_clicks_next() throws Exception {
+        log.info("Setting input fields on schedule event step3 and submitting");
         resultAction = mockMvc.perform(post("/schedule-event-step3")
-                .param("expiryDate", expiryDate)
+                .param("expiryDate", "2024-06-20")
                 .session(session));
         return self();
     }
 
-    public WhenWoodleViewMvcAction user_clicks_create_poll() throws Exception {
-        // The form submission is handled in user_fills_step3_form
+    public WhenWoodleViewMvcAction user_accesses_event_url_without_session(String uuid) throws Exception {
+        resultAction = mockMvc.perform(get("/event/" + uuid));
         return self();
     }
 }
@@ -367,6 +369,8 @@ class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
     private List<String> navigationHistory;
     @ScenarioState
     private String currentPage;
+    @ScenarioState
+    private S3Client s3Client;
 
     private void addToHistory(String page) {
         log.info("Adding to history - Current page: {}, New page: {}, History size: {}",
@@ -506,7 +510,16 @@ class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
     public ThenWoodleViewMvcOutcome summary_page_should_show_event_url() throws Exception {
         MvcResult result = resultAction.andReturn();
         String content = result.getResponse().getContentAsString();
-        assertThat(content).contains("http://localhost:8080/poll/");
+        Document doc = Jsoup.parse(content);
+        Elements eventUrl = doc.select("div[data-test-section='poll-url'] div.poll-url");
+        assertThat(eventUrl.size()).isEqualTo(1);
+        assertThat(eventUrl.text()).matches(
+                "http://localhost:8080/event/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}");
+        return self();
+    }
+
+    public ThenWoodleViewMvcOutcome poll_should_be_stored_in_s3() throws Exception {
+        verify(s3Client).putObject(any(PutObjectRequest.class), any(RequestBody.class));
         return self();
     }
 }

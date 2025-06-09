@@ -1,21 +1,29 @@
 package de.bas.bodo.woodle.adapter.web;
 
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import jakarta.servlet.http.HttpSession;
-import org.springframework.ui.Model;
-import de.bas.bodo.woodle.domain.service.PollStorageService;
-import de.bas.bodo.woodle.domain.model.PollData;
-import de.bas.bodo.woodle.view.ScheduleEventStep1Form;
-import de.bas.bodo.woodle.view.ScheduleEventStep2Form;
-import de.bas.bodo.woodle.view.ScheduleEventStep3Form;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import org.springframework.web.servlet.view.RedirectView;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import de.bas.bodo.woodle.domain.model.PollData;
+import de.bas.bodo.woodle.domain.service.PollStorageService;
+import de.bas.bodo.woodle.view.ScheduleEventStep1Form;
+import de.bas.bodo.woodle.view.ScheduleEventStep2Form;
+import de.bas.bodo.woodle.view.ScheduleEventStep3Form;
+import jakarta.servlet.http.HttpSession;
+import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 @Controller
 public class ScheduleEventController {
@@ -23,9 +31,20 @@ public class ScheduleEventController {
     private final PollStorageService pollStorageService;
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_DATE;
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ISO_LOCAL_TIME;
+    private final ObjectMapper objectMapper;
+    private final String bucketName;
+    private final String baseUrl;
+    private final S3Client s3Client;
 
-    public ScheduleEventController(PollStorageService pollStorageService) {
+    public ScheduleEventController(PollStorageService pollStorageService, ObjectMapper objectMapper,
+            @Value("${app.s3.bucket-name}") String bucketName,
+            @Value("${app.base-url}") String baseUrl,
+            S3Client s3Client) {
         this.pollStorageService = pollStorageService;
+        this.objectMapper = objectMapper;
+        this.bucketName = bucketName;
+        this.baseUrl = baseUrl;
+        this.s3Client = s3Client;
     }
 
     @PostMapping("/schedule-event-step3")
@@ -103,5 +122,42 @@ public class ScheduleEventController {
             model.addAttribute("step3FormData", new ScheduleEventStep3Form(null));
         }
         return "schedule-event-step3";
+    }
+
+    @GetMapping("/event/{uuid}")
+    public String showEventByUuid(@PathVariable String uuid, Model model) throws Exception {
+        // Get poll data from S3
+        String key = "polls/" + uuid + ".json";
+        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                .bucket(bucketName)
+                .key(key)
+                .build();
+
+        ResponseInputStream<GetObjectResponse> responseStream = s3Client.getObject(getObjectRequest);
+        String jsonData = new String(responseStream.readAllBytes());
+        PollData pollData = objectMapper.readValue(jsonData, PollData.class);
+
+        // Convert PollData to form data
+        ScheduleEventStep1Form step1Form = new ScheduleEventStep1Form(
+                pollData.name(),
+                pollData.email(),
+                pollData.title(),
+                pollData.description());
+
+        ScheduleEventStep2Form step2Form = new ScheduleEventStep2Form(
+                pollData.date().format(DATE_FORMATTER),
+                pollData.startTime().format(TIME_FORMATTER),
+                pollData.endTime().format(TIME_FORMATTER));
+
+        ScheduleEventStep3Form step3Form = new ScheduleEventStep3Form(
+                pollData.expiryDate().format(DATE_FORMATTER));
+
+        // Add data to model
+        model.addAttribute("step1FormData", step1Form);
+        model.addAttribute("step2FormData", step2Form);
+        model.addAttribute("step3FormData", step3Form);
+        model.addAttribute("pollUrl", baseUrl + "/event/" + uuid);
+
+        return "event-summary";
     }
 }

@@ -1,0 +1,10 @@
+---
+description: When writing or changeing test using jgiven
+globs: 
+alwaysApply: false
+---
+ * the `given()`, `when()` and `then()` actions in jgiven should realy reflext the basic idea of Test Driven Development:
+ * `given()` methods calls should realy set the preconditions of the test, while
+ * `when()`  methods calls should realy do the actual action. that part we want to test 
+ * and `then()` should verify the results.
+ * there is no point having a `when()...and()..and().user_clicks_next();` when in fact the body of `user_clicks_next()`is actually empty because the action is already called in another method call of the test.  `user_clicks_next()` should realy contain a body that does exactly simulate a user klicking a "next" button on the page under test. 

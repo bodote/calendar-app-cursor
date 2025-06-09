@@ -48,6 +48,6 @@ public class PollStorageService {
         log.info("object successfully stored in s3!");
 
         // Generate and return the poll URL
-        return baseUrl + "/poll/" + pollId;
+        return baseUrl + "/event/" + pollId;
     }
 }

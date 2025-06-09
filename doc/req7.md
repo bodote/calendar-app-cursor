@@ -5,6 +5,7 @@ as the user after the last test creating an event poll i want to see the summary
 * a summary of the previous entered data form all 3 steps is shown on similar to ![Event Summary page](woodle-screenshot-summary.png) 
 * the data are stored in a S3-compatible store, with the object ID using a UUID. 
 * The UUID is used to create a event URL containing the current server URL (take "http://localhost:8080" for now), the path "event" and the UUID. For example if UUID is "123e4567-e89b-12d3-a456-426614174000" then the event URL shown on the summary page would be http://localhost:8080/event/123e4567-e89b-12d3-a456-426614174000
+* the summary page can be called later even without a session object by just calling the `http://localhost:8080/event/<UUID>` (or using the example from above : `http://localhost:8080/event/123e4567-e89b-12d3-a456-426614174000` ) at any time late from everyone who has the link 
 
 # hints
 * assume a locally running MinIO al the S3 compatible store
