@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.stereotype.Component;
 import org.springframework.test.context.ActiveProfiles;
@@ -35,14 +35,12 @@ import com.tngtech.jgiven.annotation.ScenarioStage;
 import com.tngtech.jgiven.annotation.ScenarioState;
 import com.tngtech.jgiven.junit5.ScenarioTest;
 
-import de.bas.bodo.woodle.config.TestConfig;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@Import(TestConfig.class)
 @ActiveProfiles({ "test" })
 class WoodleViewTest extends ScenarioTest<GivenWoodleState, WhenWoodleAction, ThenWoodleOutcome> {
 
@@ -51,7 +49,7 @@ class WoodleViewTest extends ScenarioTest<GivenWoodleState, WhenWoodleAction, Th
         @Autowired
         private MockMvc mockMvc;
 
-        @Autowired
+        @MockBean
         private S3Client s3Client;
 
         @ScenarioStage

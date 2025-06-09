@@ -41,7 +41,6 @@ import com.tngtech.jgiven.annotation.ScenarioStage;
 import com.tngtech.jgiven.annotation.ScenarioState;
 import com.tngtech.jgiven.junit5.ScenarioTest;
 
-import de.bas.bodo.woodle.config.WebMvcTestConfig;
 import de.bas.bodo.woodle.domain.model.PollData;
 import de.bas.bodo.woodle.domain.service.PollStorageService;
 import de.bas.bodo.woodle.view.WoodleViewController;
@@ -55,7 +54,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 @WebMvcTest({ WoodleViewController.class, ScheduleEventController.class })
 @ImportAutoConfiguration(JteAutoConfiguration.class)
-@Import({ WebMvcTestConfig.class, PollStorageService.class })
+@Import({ PollStorageService.class })
 @ActiveProfiles({ "test" })
 @TestPropertySource(properties = {
         "gg.jte.development-mode=true",
