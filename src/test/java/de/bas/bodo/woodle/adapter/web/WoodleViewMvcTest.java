@@ -17,6 +17,7 @@ import java.util.List;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -156,6 +157,40 @@ class WoodleViewMvcTest
         when().user_accesses_event_url_without_session(testUuid);
         then().user_should_see_summary_page()
                 .and().summary_page_should_show_all_entered_data();
+    }
+
+    @Test
+    @DisplayName("Should show plus button on schedule-event-step2 page and handle adding new time slots")
+    void should_show_plus_button_on_schedule_event_step2_page() throws Exception {
+        given().mock_mvc_is_configured(mockMvc)
+                .and().user_is_on_homepage()
+                .and().user_has_test_data(TEST_NAME, TEST_EMAIL, TEST_TITLE, TEST_DESCRIPTION);
+        when().user_clicks_schedule_event_button()
+                .and().user_sets_input_fields_on_schedule_event_page_and_clicks_next()
+                .and().user_sets_input_fields_on_schedule_event_step2_and_clicks_next()
+                .and().user_clicks_plus_button();
+        then().user_should_see_step2_form()
+                .and().step2_form_should_have_plus_button()
+                .and().step2_form_should_show_previous_data()
+                .and().step2_form_should_have_additional_time_slot_fields();
+    }
+
+    @Test
+    @DisplayName("Should allow adding multiple time slots and preserve their data")
+    void should_allow_adding_multiple_time_slots() throws Exception {
+        given().mock_mvc_is_configured(mockMvc)
+                .and().user_is_on_homepage()
+                .and().user_has_test_data(TEST_NAME, TEST_EMAIL, TEST_TITLE, TEST_DESCRIPTION);
+        when().user_clicks_schedule_event_button()
+                .and().user_sets_input_fields_on_schedule_event_page_and_clicks_next()
+                .and().user_sets_input_fields_on_schedule_event_step2_and_clicks_next()
+                .and().user_clicks_plus_button()
+                .and().user_sets_input_fields_on_schedule_event_step2_and_clicks_next();
+        then().user_should_see_step2_form()
+                .and().step2_form_should_have_plus_button()
+                .and().step2_form_should_show_previous_data()
+                .and().step2_form_should_have_additional_time_slot_fields()
+                .and().step2_form_should_preserve_all_time_slots();
     }
 }
 
@@ -345,6 +380,16 @@ class WhenWoodleViewMvcAction extends Stage<WhenWoodleViewMvcAction> {
         resultAction = mockMvc.perform(get("/event/" + uuid));
         return self();
     }
+
+    public WhenWoodleViewMvcAction user_clicks_plus_button() throws Exception {
+        log.info("Clicking plus button to add new time slot");
+        resultAction = mockMvc.perform(post("/schedule-event-step2/add-time-slot")
+                .param("date", "2024-03-20")
+                .param("startTime", "10:00")
+                .param("endTime", "11:00")
+                .session(session));
+        return self();
+    }
 }
 
 class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
@@ -519,6 +564,89 @@ class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
 
     public ThenWoodleViewMvcOutcome poll_should_be_stored_in_s3() throws Exception {
         verify(s3Client).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+        return self();
+    }
+
+    public ThenWoodleViewMvcOutcome step2_form_should_have_plus_button() throws Exception {
+        MvcResult result = resultAction.andReturn();
+        String content = result.getResponse().getContentAsString();
+        Document doc = Jsoup.parse(content);
+
+        // Check for plus button
+        Elements plusButtons = doc.select("button[type=button].add-time-slot");
+        assertThat(plusButtons.size()).isEqualTo(1);
+
+        // Check for plus image with alt text '+'
+        Elements plusImages = plusButtons.select("img[src*='Plus-Symbol-Transparent-small.png'][alt='+']");
+        assertThat(plusImages.size()).isEqualTo(1);
+
+        return self();
+    }
+
+    public ThenWoodleViewMvcOutcome step2_form_should_show_previous_data() throws Exception {
+        MvcResult result = resultAction.andReturn();
+        String content = result.getResponse().getContentAsString();
+        Document doc = Jsoup.parse(content);
+
+        // Check that the first set of fields contains the previous data
+        Element firstDateInput = doc.select("input[data-test='date-0']").first();
+        Element firstStartTimeInput = doc.select("input[data-test='startTime-0']").first();
+        Element firstEndTimeInput = doc.select("input[data-test='endTime-0']").first();
+
+        assertThat(firstDateInput.attr("value")).isEqualTo("2024-03-20");
+        assertThat(firstStartTimeInput.attr("value")).isEqualTo("10:00");
+        assertThat(firstEndTimeInput.attr("value")).isEqualTo("11:00");
+
+        return self();
+    }
+
+    public ThenWoodleViewMvcOutcome step2_form_should_have_additional_time_slot_fields() throws Exception {
+        MvcResult result = resultAction.andReturn();
+        String content = result.getResponse().getContentAsString();
+        Document doc = Jsoup.parse(content);
+
+        // Check that we have two sets of date/time input fields
+        Elements dateInputs = doc.select("input[data-test^='date-']");
+        Elements startTimeInputs = doc.select("input[data-test^='startTime-']");
+        Elements endTimeInputs = doc.select("input[data-test^='endTime-']");
+
+        assertThat(dateInputs.size()).isEqualTo(2);
+        assertThat(startTimeInputs.size()).isEqualTo(2);
+        assertThat(endTimeInputs.size()).isEqualTo(2);
+
+        // Check that the second set of fields is empty (for new input)
+        Element secondDateInput = dateInputs.get(1);
+        Element secondStartTimeInput = startTimeInputs.get(1);
+        Element secondEndTimeInput = endTimeInputs.get(1);
+
+        assertThat(secondDateInput.attr("value")).isEmpty();
+        assertThat(secondStartTimeInput.attr("value")).isEmpty();
+        assertThat(secondEndTimeInput.attr("value")).isEmpty();
+
+        return self();
+    }
+
+    public ThenWoodleViewMvcOutcome step2_form_should_preserve_all_time_slots() throws Exception {
+        MvcResult result = resultAction.andReturn();
+        String content = result.getResponse().getContentAsString();
+        Document doc = Jsoup.parse(content);
+
+        // Check that we have two sets of date/time input fields
+        Elements dateInputs = doc.select("input[data-test^='date-']");
+        Elements startTimeInputs = doc.select("input[data-test^='startTime-']");
+        Elements endTimeInputs = doc.select("input[data-test^='endTime-']");
+
+        assertThat(dateInputs.size()).isEqualTo(2);
+        assertThat(startTimeInputs.size()).isEqualTo(2);
+        assertThat(endTimeInputs.size()).isEqualTo(2);
+
+        // Check that both sets of fields contain the correct data
+        for (int i = 0; i < 2; i++) {
+            assertThat(dateInputs.get(i).attr("value")).isEqualTo("2024-03-20");
+            assertThat(startTimeInputs.get(i).attr("value")).isEqualTo("10:00");
+            assertThat(endTimeInputs.get(i).attr("value")).isEqualTo("11:00");
+        }
+
         return self();
     }
 }

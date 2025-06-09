@@ -1,0 +1,7 @@
+---
+description: When adding or changing JTE templates, the follow this rules:
+globs: 
+alwaysApply: false
+---
+* for `for`-loops use the `for-each` style which is more consise
+* don't use the `@{ ...}` syntax, it is totally wrong, it might work with other template engines but not with jte. see [jte variables](mdc:https:/jte.gg/syntax/#variables)  instead.

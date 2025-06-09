@@ -1,6 +1,11 @@
 spring:
   main:
     allow-bean-definition-overriding: true
+  jte:
+    development-mode: true
+logging:
+  level:
+    de.bas.bodo: DEBUG
 
 gg:
   jte:

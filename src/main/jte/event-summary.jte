@@ -93,14 +93,18 @@
 
         <div class="summary-section" data-test-section="event-details">
             <h2>Event Details</h2>
-            <div class="summary-item" data-test-item="date">
-                <span class="summary-label">Date:</span>
-                <span>${step2FormData.date()}</span>
+            @for(var timeSlot : step2FormData.timeSlots())
+            <div class="summary-item" data-test-item="time-slot">
+                <div class="summary-item" data-test-item="date">
+                    <span class="summary-label">Date:</span>
+                    <span>${timeSlot.date()}</span>
+                </div>
+                <div class="summary-item" data-test-item="time">
+                    <span class="summary-label">Time:</span>
+                    <span>${timeSlot.startTime()} - ${timeSlot.endTime()}</span>
+                </div>
             </div>
-            <div class="summary-item" data-test-item="time">
-                <span class="summary-label">Time:</span>
-                <span>${step2FormData.startTime()} - ${step2FormData.endTime()}</span>
-            </div>
+            @endfor
             <div class="summary-item" data-test-item="expiry-date">
                 <span class="summary-label">Expiry Date:</span>
                 <span>${step3FormData.expiryDate()}</span>

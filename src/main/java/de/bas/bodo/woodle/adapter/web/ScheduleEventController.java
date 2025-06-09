@@ -26,6 +26,7 @@ import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 @Controller
+// a test
 public class ScheduleEventController {
 
     private final PollStorageService pollStorageService;
@@ -62,9 +63,17 @@ public class ScheduleEventController {
         session.setAttribute("step3FormData", step3Form);
 
         // Convert string values to LocalDate and LocalTime
-        LocalDate eventDate = LocalDate.parse(step2Form.date(), DATE_FORMATTER);
-        LocalTime startTime = LocalTime.parse(step2Form.startTime(), TIME_FORMATTER);
-        LocalTime endTime = LocalTime.parse(step2Form.endTime(), TIME_FORMATTER);
+        ScheduleEventStep2Form.TimeSlot firstSlot = step2Form.timeSlots().isEmpty() ? null
+                : step2Form.timeSlots().get(0);
+        LocalDate eventDate = firstSlot != null && firstSlot.date() != null && !firstSlot.date().isEmpty()
+                ? LocalDate.parse(firstSlot.date(), DATE_FORMATTER)
+                : null;
+        LocalTime startTime = firstSlot != null && firstSlot.startTime() != null && !firstSlot.startTime().isEmpty()
+                ? LocalTime.parse(firstSlot.startTime(), TIME_FORMATTER)
+                : null;
+        LocalTime endTime = firstSlot != null && firstSlot.endTime() != null && !firstSlot.endTime().isEmpty()
+                ? LocalTime.parse(firstSlot.endTime(), TIME_FORMATTER)
+                : null;
         LocalDate expiryDateParsed = LocalDate.parse(expiryDate, DATE_FORMATTER);
 
         // Create poll data
@@ -114,10 +123,16 @@ public class ScheduleEventController {
     @GetMapping("/schedule-event-step3")
     public String showStep3Form(Model model, HttpSession session) {
         ScheduleEventStep2Form step2Form = (ScheduleEventStep2Form) session.getAttribute("step2FormData");
-        if (step2Form != null) {
-            LocalDate eventDate = LocalDate.parse(step2Form.date(), DATE_FORMATTER);
-            LocalDate defaultExpiryDate = eventDate.plusMonths(3);
-            model.addAttribute("step3FormData", new ScheduleEventStep3Form(defaultExpiryDate.format(DATE_FORMATTER)));
+        if (step2Form != null && !step2Form.timeSlots().isEmpty()) {
+            ScheduleEventStep2Form.TimeSlot firstSlot = step2Form.timeSlots().get(0);
+            if (firstSlot.date() != null && !firstSlot.date().isEmpty()) {
+                LocalDate eventDate = LocalDate.parse(firstSlot.date(), DATE_FORMATTER);
+                LocalDate defaultExpiryDate = eventDate.plusMonths(3);
+                model.addAttribute("step3FormData",
+                        new ScheduleEventStep3Form(defaultExpiryDate.format(DATE_FORMATTER)));
+            } else {
+                model.addAttribute("step3FormData", new ScheduleEventStep3Form(null));
+            }
         } else {
             model.addAttribute("step3FormData", new ScheduleEventStep3Form(null));
         }
@@ -145,9 +160,10 @@ public class ScheduleEventController {
                 pollData.description());
 
         ScheduleEventStep2Form step2Form = new ScheduleEventStep2Form(
-                pollData.date().format(DATE_FORMATTER),
-                pollData.startTime().format(TIME_FORMATTER),
-                pollData.endTime().format(TIME_FORMATTER));
+                java.util.List.of(new ScheduleEventStep2Form.TimeSlot(
+                        pollData.date().format(DATE_FORMATTER),
+                        pollData.startTime().format(TIME_FORMATTER),
+                        pollData.endTime().format(TIME_FORMATTER))));
 
         ScheduleEventStep3Form step3Form = new ScheduleEventStep3Form(
                 pollData.expiryDate().format(DATE_FORMATTER));

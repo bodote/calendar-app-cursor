@@ -47,29 +47,81 @@
             position: relative;
             margin-bottom: 15px;
         }
+        .add-time-slot {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            margin: 10px auto;
+            background-color: #7a8c5c;
+            border-radius: 50%;
+        }
+        .add-time-slot img {
+            width: 20px;
+            height: 20px;
+        }
+        .time-slot {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+        }
     </style>
 </head>
 <body>
     <img src="/woodle-logo.jpeg" alt="Woodle Logo" class="logo">
     <h1>Schedule Event - Step 2</h1>
     <form action="/schedule-event-step2" method="post">
-        <div class="input-group">
-            <label for="date">Choose a date</label>
-            <input type="date" id="date" name="date" required value="${step2FormData.date() != null ? step2FormData.date() : ""}">
-        </div>
+        !{int index = 0;}
+        @for(int i = 0; i < step2FormData.timeSlots().size(); i++)
+            !{var timeSlot = step2FormData.timeSlots().get(i);}
+            <div class="time-slot">
+                <div class="input-group">
+                    <label for="date${i}">Date:</label>
+                    <input type="date" id="date${i}" name="date${i}" data-test="date-${i}" value="${timeSlot.date()}" required>
+                </div>
 
-        <div class="input-group">
-            <label for="startTime">Start time</label>
-            <input type="time" id="startTime" name="startTime" required value="${step2FormData.startTime() != null ? step2FormData.startTime() : ""}">
-        </div>
+                <div class="input-group">
+                    <label for="startTime${i}">Start Time:</label>
+                    <input type="time" id="startTime${i}" name="startTime${i}" data-test="startTime-${i}" value="${timeSlot.startTime()}" required>
+                </div>
 
-        <div class="input-group">
-            <label for="endTime">End time</label>
-            <input type="time" id="endTime" name="endTime" required value="${step2FormData.endTime() != null ? step2FormData.endTime() : ""}">
-        </div>
+                <div class="input-group">
+                    <label for="endTime${i}">End Time:</label>
+                    <input type="time" id="endTime${i}" name="endTime${i}" data-test="endTime-${i}" value="${timeSlot.endTime()}" required>
+                </div>
+            </div>
+        @endfor
+
+        <button type="button" class="add-time-slot" data-test="add-time-slot" onclick="addTimeSlot()">
+            <img src="/Plus-Symbol-Transparent-small.png" alt="+">
+        </button>
 
         <button type="button" onclick="window.history.back()">Back</button>
         <button type="submit">Next</button>
     </form>
+
+    <script>
+        function addTimeSlot() {
+            const form = document.querySelector('form');
+            const date = form.querySelector('input[name="date0"]').value;
+            const startTime = form.querySelector('input[name="startTime0"]').value;
+            const endTime = form.querySelector('input[name="endTime0"]').value;
+
+            const formData = new FormData();
+            formData.append('date', date);
+            formData.append('startTime', startTime);
+            formData.append('endTime', endTime);
+
+            fetch('/schedule-event-step2/add-time-slot', {
+                method: 'POST',
+                body: formData
+            }).then(() => {
+                window.location.reload();
+            });
+        }
+    </script>
 </body>
 </html> 
