@@ -14,6 +14,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -35,6 +36,7 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tngtech.jgiven.Stage;
@@ -191,7 +193,8 @@ class WoodleViewMvcTest
                 .and().user_has_test_data(TEST_NAME, TEST_EMAIL, TEST_TITLE, TEST_DESCRIPTION);
         when().user_clicks_schedule_event_button()
                 .and().user_sets_input_fields_on_schedule_event_page_and_clicks_next()
-                .and().user_sets_time_slot_fields("2024-03-20", "10:00", "11:00")
+                .and().user_sets_input_fields_on_schedule_event_step2_and_clicks_next(Map.of(
+                        0, new de.bas.bodo.woodle.adapter.web.TimeSlot("2024-03-20", "10:00", "11:00")))
                 .and().user_clicks_plus_button();
         then().user_should_see_step2_form()
                 .and().step2_form_should_have_plus_button()
@@ -200,7 +203,9 @@ class WoodleViewMvcTest
                         List.of(new de.bas.bodo.woodle.adapter.web.TimeSlot("2024-03-20", "10:00", "11:00")))
                 .and().step2_form_should_have_additional_time_slot_fields()
                 .and().step2_form_should_have_empty_slot(1);
-        when().user_sets_time_slot_fields("2024-03-21", "14:00", "15:00")
+        when().user_sets_input_fields_on_schedule_event_step2_and_clicks_next(Map.of(
+                0, new de.bas.bodo.woodle.adapter.web.TimeSlot("2024-03-21", "14:00", "15:00"),
+                1, new de.bas.bodo.woodle.adapter.web.TimeSlot("2024-03-20", "10:00", "11:00")))
                 .and().user_clicks_plus_button();
         then().user_should_see_step2_form()
                 .and().step2_form_should_have_plus_button()
@@ -222,9 +227,9 @@ class WoodleViewMvcTest
                 .and().user_has_test_data(TEST_NAME, TEST_EMAIL, TEST_TITLE, TEST_DESCRIPTION);
         when().user_clicks_schedule_event_button()
                 .and().user_sets_input_fields_on_schedule_event_page_and_clicks_next()
-                .and().user_sets_input_fields_on_schedule_event_step2_and_clicks_next()
-                .and().user_clicks_plus_button()
-                .and().user_sets_input_fields_on_schedule_event_step2_and_clicks_next();
+                .and().user_sets_input_fields_on_schedule_event_step2_and_clicks_next(Map.of(
+                        0, new de.bas.bodo.woodle.adapter.web.TimeSlot("2024-03-20", "10:00", "11:00")))
+                .and().user_clicks_plus_button();
         then().user_should_see_step2_form()
                 .and().step2_form_should_have_plus_button()
                 .and().step2_form_should_show_previous_data()
@@ -379,8 +384,9 @@ class WhenWoodleViewMvcAction extends Stage<WhenWoodleViewMvcAction> {
         String content = currentResult.getResponse().getContentAsString();
         Document doc = Jsoup.parse(content);
 
-        // Find the back button and verify it has the correct onclick handler
-        Elements backButtons = doc.select("button[type=button]");
+        // Find the back button specifically by looking for the button that contains
+        // "Back" text
+        Elements backButtons = doc.select("button[type=button]:contains(Back)");
         assertThat(backButtons).isNotEmpty();
         assertThat(backButtons.attr("onclick")).isEqualTo("window.history.back()");
 
@@ -397,19 +403,39 @@ class WhenWoodleViewMvcAction extends Stage<WhenWoodleViewMvcAction> {
         return self();
     }
 
-    public WhenWoodleViewMvcAction user_sets_input_fields_on_schedule_event_step2_and_clicks_next(String date,
-            String startTime, String endTime) throws Exception {
-        log.info("Setting input fields on schedule event step2 and submitting");
-        resultAction = mockMvc.perform(post("/schedule-event-step2")
-                .param("date", date)
-                .param("startTime", startTime)
-                .param("endTime", endTime)
-                .session(session));
+    public WhenWoodleViewMvcAction user_sets_input_fields_on_schedule_event_step2_and_clicks_next(
+            Map<Integer, de.bas.bodo.woodle.adapter.web.TimeSlot> timeSlots) throws Exception {
+        log.info("Setting input fields on schedule event step2 and submitting with {} time slots", timeSlots.size());
+        MockHttpServletRequestBuilder requestBuilder = post("/schedule-event-step2").session(session);
+
+        for (Map.Entry<Integer, de.bas.bodo.woodle.adapter.web.TimeSlot> entry : timeSlots.entrySet()) {
+            int index = entry.getKey();
+            de.bas.bodo.woodle.adapter.web.TimeSlot slot = entry.getValue();
+            requestBuilder
+                    .param("date" + index, slot.date())
+                    .param("startTime" + index, slot.startTime())
+                    .param("endTime" + index, slot.endTime());
+        }
+
+        resultAction = mockMvc.perform(requestBuilder);
         return self();
     }
 
     public WhenWoodleViewMvcAction user_sets_input_fields_on_schedule_event_step2_and_clicks_next() throws Exception {
-        return user_sets_input_fields_on_schedule_event_step2_and_clicks_next("2024-03-20", "10:00", "11:00");
+        Map<Integer, de.bas.bodo.woodle.adapter.web.TimeSlot> defaultTimeSlots = Map.of(
+                0, new de.bas.bodo.woodle.adapter.web.TimeSlot("2024-03-20", "10:00", "11:00"));
+        return user_sets_input_fields_on_schedule_event_step2_and_clicks_next(defaultTimeSlots);
+    }
+
+    public WhenWoodleViewMvcAction user_sets_time_slot_fields(String date, String startTime, String endTime)
+            throws Exception {
+        log.info("Setting time slot fields: date={}, startTime={}, endTime={}", date, startTime, endTime);
+        resultAction = mockMvc.perform(post("/schedule-event-step2")
+                .param("date0", date)
+                .param("startTime0", startTime)
+                .param("endTime0", endTime)
+                .session(session));
+        return self();
     }
 
     public WhenWoodleViewMvcAction user_sets_input_fields_on_schedule_event_step3_and_clicks_next() throws Exception {
@@ -510,11 +536,11 @@ class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
         MvcResult result = resultAction.andReturn();
         String content = result.getResponse().getContentAsString();
         org.jsoup.nodes.Document doc = org.jsoup.Jsoup.parse(content);
-        // Check for date input
-        org.jsoup.select.Elements dateInputs = doc.select("input[type=date][id=date][name=date]");
-        org.jsoup.select.Elements startTimeInputs = doc.select("input[type=time][id=startTime][name=startTime]");
-        org.jsoup.select.Elements endTimeInputs = doc.select("input[type=time][id=endTime][name=endTime]");
-        org.jsoup.select.Elements backButtons = doc.select("button[type=button]");
+        // Check for indexed date input (at least one time slot should exist)
+        org.jsoup.select.Elements dateInputs = doc.select("input[type=date][id=date0][name=date0]");
+        org.jsoup.select.Elements startTimeInputs = doc.select("input[type=time][id=startTime0][name=startTime0]");
+        org.jsoup.select.Elements endTimeInputs = doc.select("input[type=time][id=endTime0][name=endTime0]");
+        org.jsoup.select.Elements backButtons = doc.select("button[type=button]:contains(Back)");
         org.jsoup.select.Elements nextButtons = doc.select("button[type=submit]");
         org.assertj.core.api.Assertions.assertThat(dateInputs.size()).isEqualTo(1);
         org.assertj.core.api.Assertions.assertThat(startTimeInputs.size()).isEqualTo(1);
@@ -619,7 +645,8 @@ class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
         return self();
     }
 
-    public ThenWoodleViewMvcOutcome step2_form_should_show_previous_data(List<TimeSlot> expectedTimeSlots)
+    public ThenWoodleViewMvcOutcome step2_form_should_show_previous_data(
+            List<de.bas.bodo.woodle.adapter.web.TimeSlot> expectedTimeSlots)
             throws Exception {
         log.info("Verifying step2 form with previous data");
         MvcResult result = resultAction.andReturn();
@@ -627,7 +654,7 @@ class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
         Document doc = Jsoup.parse(content);
 
         for (int i = 0; i < expectedTimeSlots.size(); i++) {
-            TimeSlot expectedSlot = expectedTimeSlots.get(i);
+            de.bas.bodo.woodle.adapter.web.TimeSlot expectedSlot = expectedTimeSlots.get(i);
             Element dateInput = doc.select("input[data-test='date-" + i + "']").first();
             Element startTimeInput = doc.select("input[data-test='startTime-" + i + "']").first();
             Element endTimeInput = doc.select("input[data-test='endTime-" + i + "']").first();
@@ -654,12 +681,15 @@ class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
         assertThat(startTimeInputs.size()).isEqualTo(2);
         assertThat(endTimeInputs.size()).isEqualTo(2);
 
-        // Check that both sets of fields contain the correct data
-        for (int i = 0; i < 2; i++) {
-            assertThat(dateInputs.get(i).attr("value")).isEqualTo("2024-03-20");
-            assertThat(startTimeInputs.get(i).attr("value")).isEqualTo("10:00");
-            assertThat(endTimeInputs.get(i).attr("value")).isEqualTo("11:00");
-        }
+        // Check that first slot has the existing data
+        assertThat(dateInputs.get(0).attr("value")).isEqualTo("2024-03-20");
+        assertThat(startTimeInputs.get(0).attr("value")).isEqualTo("10:00");
+        assertThat(endTimeInputs.get(0).attr("value")).isEqualTo("11:00");
+
+        // Check that second slot is empty (for new input)
+        assertThat(dateInputs.get(1).attr("value")).isEmpty();
+        assertThat(startTimeInputs.get(1).attr("value")).isEmpty();
+        assertThat(endTimeInputs.get(1).attr("value")).isEmpty();
 
         return self();
     }

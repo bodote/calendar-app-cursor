@@ -2,6 +2,7 @@ package de.bas.bodo.woodle.view;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,11 +68,38 @@ public class WoodleViewController {
 
     @PostMapping("/schedule-event-step2")
     public ResponseEntity<String> scheduleEventStep3(
-            @RequestParam String date,
-            @RequestParam String startTime,
-            @RequestParam String endTime,
+            @RequestParam Map<String, String> allParams,
             Model model) {
-        ScheduleEventStep2Form step2FormData = new ScheduleEventStep2Form(date, startTime, endTime);
+
+        // Collect all time slots from indexed parameters
+        List<ScheduleEventStep2Form.TimeSlot> timeSlots = new ArrayList<>();
+        int index = 0;
+
+        while (allParams.containsKey("date" + index)) {
+            String date = allParams.get("date" + index);
+            String startTime = allParams.get("startTime" + index);
+            String endTime = allParams.get("endTime" + index);
+
+            // Only add non-empty time slots
+            if (!date.isEmpty() && !startTime.isEmpty() && !endTime.isEmpty()) {
+                timeSlots.add(new ScheduleEventStep2Form.TimeSlot(date, startTime, endTime));
+            }
+            index++;
+        }
+
+        // If no time slots found, fall back to single parameters (for backward
+        // compatibility)
+        if (timeSlots.isEmpty() && allParams.containsKey("date") && allParams.containsKey("startTime")
+                && allParams.containsKey("endTime")) {
+            String date = allParams.get("date");
+            String startTime = allParams.get("startTime");
+            String endTime = allParams.get("endTime");
+            if (!date.isEmpty() && !startTime.isEmpty() && !endTime.isEmpty()) {
+                timeSlots.add(new ScheduleEventStep2Form.TimeSlot(date, startTime, endTime));
+            }
+        }
+
+        ScheduleEventStep2Form step2FormData = new ScheduleEventStep2Form(timeSlots);
         model.addAttribute("step2FormData", step2FormData);
         return ResponseEntity.status(HttpStatus.SEE_OTHER)
                 .header("Location", "/schedule-event-step3")

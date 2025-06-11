@@ -256,9 +256,9 @@ class WhenWoodleAction extends Stage<WhenWoodleAction> {
 
         public WhenWoodleAction user_fills_step2_form(String date, String startTime, String endTime) throws Exception {
                 mockMvc.perform(post("/schedule-event-step2")
-                                .param("date", date)
-                                .param("startTime", startTime)
-                                .param("endTime", endTime)
+                                .param("date0", date)
+                                .param("startTime0", startTime)
+                                .param("endTime0", endTime)
                                 .session(session))
                                 .andExpect(status().isSeeOther())
                                 .andExpect(redirectedUrl("/schedule-event-step3"));
@@ -320,17 +320,17 @@ class ThenWoodleOutcome extends Stage<ThenWoodleOutcome> {
 
         public ThenWoodleOutcome user_should_see_step2_form() throws Exception {
                 Document doc = getAndParseHtml("/schedule-event-step2", session);
-                assertThat(doc.select("input[type=date][id=date][name=date]").size()).isEqualTo(1);
-                assertThat(doc.select("input[type=time][id=startTime][name=startTime]").size()).isEqualTo(1);
-                assertThat(doc.select("input[type=time][id=endTime][name=endTime]").size()).isEqualTo(1);
+                assertThat(doc.select("input[type=date][id=date0][name=date0]").size()).isEqualTo(1);
+                assertThat(doc.select("input[type=time][id=startTime0][name=startTime0]").size()).isEqualTo(1);
+                assertThat(doc.select("input[type=time][id=endTime0][name=endTime0]").size()).isEqualTo(1);
                 return self();
         }
 
         public ThenWoodleOutcome step2_form_should_have_all_required_fields() throws Exception {
                 Document doc = getAndParseHtml("/schedule-event-step2", session);
-                assertThat(doc.select("input[type=date][id=date][name=date]").size()).isEqualTo(1);
-                assertThat(doc.select("input[type=time][id=startTime][name=startTime]").size()).isEqualTo(1);
-                assertThat(doc.select("input[type=time][id=endTime][name=endTime]").size()).isEqualTo(1);
+                assertThat(doc.select("input[type=date][id=date0][name=date0]").size()).isEqualTo(1);
+                assertThat(doc.select("input[type=time][id=startTime0][name=startTime0]").size()).isEqualTo(1);
+                assertThat(doc.select("input[type=time][id=endTime0][name=endTime0]").size()).isEqualTo(1);
                 assertThat(doc.select("button[type=button]:contains(Back)").size()).isEqualTo(1);
                 assertThat(doc.select("button[type=submit]:contains(Next)").size()).isEqualTo(1);
                 return self();
@@ -338,9 +338,9 @@ class ThenWoodleOutcome extends Stage<ThenWoodleOutcome> {
 
         public ThenWoodleOutcome user_should_see_step2_form_with_previous_data() throws Exception {
                 Document doc = getAndParseHtml("/schedule-event-step2", session);
-                assertThat(doc.select("input[name=date]").attr("value")).isEqualTo("2024-03-20");
-                assertThat(doc.select("input[name=startTime]").attr("value")).isEqualTo("10:00");
-                assertThat(doc.select("input[name=endTime]").attr("value")).isEqualTo("11:00");
+                assertThat(doc.select("input[name=date0]").attr("value")).isEqualTo("2024-03-20");
+                assertThat(doc.select("input[name=startTime0]").attr("value")).isEqualTo("10:00");
+                assertThat(doc.select("input[name=endTime0]").attr("value")).isEqualTo("11:00");
                 return self();
         }
 
