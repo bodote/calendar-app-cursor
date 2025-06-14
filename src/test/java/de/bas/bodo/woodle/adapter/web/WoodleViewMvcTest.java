@@ -743,23 +743,48 @@ class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
 
     public ThenWoodleViewMvcOutcome summary_page_should_show_all_entered_data(
             Map<Integer, TimeSlot> expectedTimeSlots) throws Exception {
-        MvcResult result = resultAction.andReturn();
-        String content = result.getResponse().getContentAsString();
-        assertThat(content)
-                .contains(name)
-                .contains(email)
-                .contains(title)
-                .contains(description)
-                .contains("2024-03-20")
-                .contains("10:00")
-                .contains("11:00")
-                .contains("2024-06-20");
+        Document doc = getDocumentFromResult();
 
+        // Check that poll information is still displayed (title and description in
+        // poll-details section)
+        assertThat(doc.select(
+                "div[data-test-section='poll-details'] div[data-test-item='title'] span:contains(" + title + ")")
+                .size())
+                .isEqualTo(1);
+        assertThat(doc.select("div[data-test-section='poll-details'] div[data-test-item='description'] span:contains("
+                + description + ")").size())
+                .isEqualTo(1);
+
+        // Check that organizer information is still displayed (name and email in
+        // organizer-details section)
+        assertThat(doc.select(
+                "div[data-test-section='organizer-details'] div[data-test-item='name'] span:contains(" + name + ")")
+                .size())
+                .isEqualTo(1);
+        assertThat(doc.select(
+                "div[data-test-section='organizer-details'] div[data-test-item='email'] span:contains(" + email + ")")
+                .size())
+                .isEqualTo(1);
+
+        // Check that expiry date is still displayed somewhere on the page
+        assertThat(doc.select("span:contains(2024-06-20)").size()).isGreaterThan(0);
+
+        // Check that time slot data is now in the events table, not in the old
+        // event-details section
+        Elements eventsTable = doc.select("table[data-test='events-table']");
+        assertThat(eventsTable.size()).isEqualTo(1);
+
+        // Verify that time slots are in the table headers
         for (TimeSlot slot : expectedTimeSlots.values()) {
-            assertThat(content).contains(slot.date());
-            assertThat(content).contains(slot.startTime());
-            assertThat(content).contains(slot.endTime());
+            Elements timeHeaders = doc
+                    .select("table[data-test='events-table'] thead tr th[data-test-date='" + slot.date() + "']");
+            assertThat(timeHeaders.size()).isGreaterThan(0);
         }
+
+        // Verify that the old event-details section no longer exists
+        Elements oldEventDetails = doc.select("div[data-test-section='event-details']");
+        assertThat(oldEventDetails.size()).isEqualTo(0);
+
         return self();
     }
 
@@ -982,23 +1007,23 @@ class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
         // 11:00-12:00
         assertThat(timeHeaders.size()).isEqualTo(3);
 
-        // First time slot should be 2024-03-15 09:00-10:00
+        // First time slot should be 2024-03-15 09:00:00-10:00:00
         Element firstTimeHeader = timeHeaders.get(0);
         assertThat(firstTimeHeader.attr("data-test-date")).isEqualTo("2024-03-15");
-        assertThat(firstTimeHeader.attr("data-test-start-time")).isEqualTo("09:00");
-        assertThat(firstTimeHeader.attr("data-test-end-time")).isEqualTo("10:00");
+        assertThat(firstTimeHeader.attr("data-test-start-time")).isEqualTo("09:00:00");
+        assertThat(firstTimeHeader.attr("data-test-end-time")).isEqualTo("10:00:00");
 
-        // Second time slot should be 2024-03-15 14:00-15:00
+        // Second time slot should be 2024-03-15 14:00:00-15:00:00
         Element secondTimeHeader = timeHeaders.get(1);
         assertThat(secondTimeHeader.attr("data-test-date")).isEqualTo("2024-03-15");
-        assertThat(secondTimeHeader.attr("data-test-start-time")).isEqualTo("14:00");
-        assertThat(secondTimeHeader.attr("data-test-end-time")).isEqualTo("15:00");
+        assertThat(secondTimeHeader.attr("data-test-start-time")).isEqualTo("14:00:00");
+        assertThat(secondTimeHeader.attr("data-test-end-time")).isEqualTo("15:00:00");
 
-        // Third time slot should be 2024-03-18 11:00-12:00
+        // Third time slot should be 2024-03-18 11:00:00-12:00:00
         Element thirdTimeHeader = timeHeaders.get(2);
         assertThat(thirdTimeHeader.attr("data-test-date")).isEqualTo("2024-03-18");
-        assertThat(thirdTimeHeader.attr("data-test-start-time")).isEqualTo("11:00");
-        assertThat(thirdTimeHeader.attr("data-test-end-time")).isEqualTo("12:00");
+        assertThat(thirdTimeHeader.attr("data-test-start-time")).isEqualTo("11:00:00");
+        assertThat(thirdTimeHeader.attr("data-test-end-time")).isEqualTo("12:00:00");
 
         return self();
     }
