@@ -45,9 +45,9 @@ import com.tngtech.jgiven.annotation.ScenarioStage;
 import com.tngtech.jgiven.annotation.ScenarioState;
 import com.tngtech.jgiven.junit5.ScenarioTest;
 
-import de.bas.bodo.woodle.adapter.web.WoodleViewMvcTest.TestTimeSlot;
 import de.bas.bodo.woodle.domain.model.PollData;
 import de.bas.bodo.woodle.domain.service.PollStorageService;
+import de.bas.bodo.woodle.view.TimeSlot;
 import de.bas.bodo.woodle.view.WoodleViewController;
 import gg.jte.springframework.boot.autoconfigure.JteAutoConfiguration;
 import software.amazon.awssdk.core.ResponseInputStream;
@@ -86,29 +86,16 @@ class WoodleViewMvcTest
     private static final String TEST_TITLE = "My Poll";
     private static final String TEST_DESCRIPTION = "Some description";
 
-    public static class TestTimeSlot {
-        private final String date;
-        private final String startTime;
-        private final String endTime;
+    // Additional common test data - made public static for inner class access
+    public static final String JOHN_DOE_NAME = "John Doe";
+    public static final String JOHN_DOE_EMAIL = "john@example.com";
+    public static final String TEAM_MEETING_TITLE = "Team Meeting";
+    public static final String WEEKLY_SYNC_DESCRIPTION = "Weekly sync";
 
-        public TestTimeSlot(String date, String startTime, String endTime) {
-            this.date = date;
-            this.startTime = startTime;
-            this.endTime = endTime;
-        }
-
-        public String date() {
-            return date;
-        }
-
-        public String startTime() {
-            return startTime;
-        }
-
-        public String endTime() {
-            return endTime;
-        }
-    }
+    public static final String JANE_SMITH_NAME = "Jane Smith";
+    public static final String JANE_SMITH_EMAIL = "jane@example.com";
+    public static final String PROJECT_PLANNING_TITLE = "Project Planning";
+    public static final String QUARTERLY_PLANNING_DESCRIPTION = "Quarterly planning session";
 
     @ScenarioStage
     private GivenWoodleViewMvcState givenWoodleViewMvcState;
@@ -185,8 +172,8 @@ class WoodleViewMvcTest
         when().user_accesses_event_url_without_session(testUuid);
         then().user_should_see_summary_page()
                 .and().summary_page_should_show_all_entered_data(Map.of(
-                        0, new TestTimeSlot("2024-03-20", "10:00", "11:00"),
-                        1, new TestTimeSlot("2024-03-21", "14:00", "15:00")));
+                        0, new TimeSlot("2024-03-20", "10:00", "11:00"),
+                        1, new TimeSlot("2024-03-21", "14:00", "15:00")));
     }
 
     @Test
@@ -198,23 +185,23 @@ class WoodleViewMvcTest
         when().user_clicks_schedule_event_button()
                 .and().user_sets_input_fields_on_schedule_event_page_and_clicks_next()
                 .and().user_sets_input_fields_on_schedule_event_step2_and_clicks_next(Map.of(
-                        0, new TestTimeSlot("2024-03-20", "10:00", "11:00")))
+                        0, new TimeSlot("2024-03-20", "10:00", "11:00")))
                 .and().user_clicks_plus_button();
         then().user_should_see_step2_form()
                 .and().step2_form_should_have_plus_button()
                 .and().step2_form_should_show_previous_data(Map.of(
-                        0, new TestTimeSlot("2024-03-20", "10:00", "11:00")))
+                        0, new TimeSlot("2024-03-20", "10:00", "11:00")))
                 .and().step2_form_should_have_additional_time_slot_fields()
                 .and().step2_form_should_have_empty_slot(1);
         when().user_sets_input_fields_on_schedule_event_step2_and_clicks_next(Map.of(
-                0, new TestTimeSlot("2024-03-21", "14:00", "15:00"),
-                1, new TestTimeSlot("2024-03-20", "10:00", "11:00")))
+                0, new TimeSlot("2024-03-21", "14:00", "15:00"),
+                1, new TimeSlot("2024-03-20", "10:00", "11:00")))
                 .and().user_clicks_plus_button();
         then().user_should_see_step2_form()
                 .and().step2_form_should_have_plus_button()
                 .and().step2_form_should_show_previous_data(Map.of(
-                        0, new TestTimeSlot("2024-03-21", "14:00", "15:00"),
-                        1, new TestTimeSlot("2024-03-20", "10:00", "11:00")))
+                        0, new TimeSlot("2024-03-21", "14:00", "15:00"),
+                        1, new TimeSlot("2024-03-20", "10:00", "11:00")))
                 .and().step2_form_should_have_three_time_slots()
                 .and().step2_form_should_have_empty_slot(2);
     }
@@ -228,8 +215,8 @@ class WoodleViewMvcTest
         when().user_clicks_schedule_event_button()
                 .and().user_sets_input_fields_on_schedule_event_page_and_clicks_next()
                 .and().user_sets_input_fields_on_schedule_event_step2_and_clicks_next(Map.of(
-                        0, new TestTimeSlot("2024-03-20", "10:00", "11:00"),
-                        1, new TestTimeSlot("", "", "")))
+                        0, new TimeSlot("2024-03-20", "10:00", "11:00"),
+                        1, new TimeSlot("", "", "")))
                 .and().user_clicks_plus_button();
         then().user_should_see_step2_form()
                 .and().only_one_time_slot_should_be_in_session();
@@ -244,7 +231,7 @@ class WoodleViewMvcTest
         when().user_clicks_schedule_event_button()
                 .and().user_sets_input_fields_on_schedule_event_page_and_clicks_next()
                 .and().user_sets_input_fields_on_schedule_event_step2_and_clicks_next(Map.of(
-                        0, new TestTimeSlot("2024-03-20", "10:00", "11:00")))
+                        0, new TimeSlot("2024-03-20", "10:00", "11:00")))
                 .and().user_clicks_plus_button();
         then().user_should_see_step2_form()
                 .and().step2_form_should_have_plus_button()
@@ -263,13 +250,13 @@ class WoodleViewMvcTest
         when().user_clicks_schedule_event_button()
                 .and().user_sets_input_fields_on_schedule_event_page_and_clicks_next()
                 .and().user_sets_input_fields_on_schedule_event_step2_and_clicks_next(Map.of(
-                        0, new TestTimeSlot("2024-03-20", "10:00", "11:00"),
-                        1, new TestTimeSlot("2024-03-21", "14:00", "15:00")))
+                        0, new TimeSlot("2024-03-20", "10:00", "11:00"),
+                        1, new TimeSlot("2024-03-21", "14:00", "15:00")))
                 .and().user_sets_input_fields_on_schedule_event_step3_and_clicks_next();
         then().user_should_see_summary_page()
                 .and().summary_page_should_show_all_entered_data(Map.of(
-                        0, new TestTimeSlot("2024-03-20", "10:00", "11:00"),
-                        1, new TestTimeSlot("2024-03-21", "14:00", "15:00")));
+                        0, new TimeSlot("2024-03-20", "10:00", "11:00"),
+                        1, new TimeSlot("2024-03-21", "14:00", "15:00")));
     }
 
     @Test
@@ -282,14 +269,30 @@ class WoodleViewMvcTest
         when().user_clicks_schedule_event_button()
                 .and().user_sets_input_fields_on_schedule_event_page_and_clicks_next()
                 .and().user_sets_input_fields_on_schedule_event_step2_and_clicks_next(Map.of(
-                        0, new TestTimeSlot("2024-03-20", "10:00", "11:00"),
-                        1, new TestTimeSlot("2024-03-21", "14:00", "15:00")))
+                        0, new TimeSlot("2024-03-20", "10:00", "11:00"),
+                        1, new TimeSlot("2024-03-21", "14:00", "15:00")))
                 .and().user_sets_input_fields_on_schedule_event_step3_and_clicks_next()
                 .and().user_captures_event_url_and_reloads_in_new_session();
         then().user_should_see_summary_page()
                 .and().summary_page_should_show_all_entered_data(Map.of(
-                        0, new TestTimeSlot("2024-03-20", "10:00", "11:00"),
-                        1, new TestTimeSlot("2024-03-21", "14:00", "15:00")));
+                        0, new TimeSlot("2024-03-20", "10:00", "11:00"),
+                        1, new TimeSlot("2024-03-21", "14:00", "15:00")));
+    }
+
+    @Test
+    @DisplayName("Should display proposed events in a table with grouped dates and ordered time slots")
+    void should_display_proposed_events_in_table_with_grouped_dates() throws Exception {
+        String testUuid = "123e4567-e89b-12d3-a456-426614174001";
+        given().mock_mvc_is_configured(mockMvc)
+                .and().s3_client_is_configured(s3Client)
+                .and().s3_client_returns_three_test_events_for_uuid(testUuid);
+        when().user_accesses_event_url_without_session(testUuid);
+        then().user_should_see_summary_page()
+                .and().summary_page_should_have_events_table()
+                .and().events_table_should_have_column_headers()
+                .and().events_table_should_group_dates_together()
+                .and().events_table_should_order_dates_and_times_correctly()
+                .and().events_table_should_have_empty_name_input_field();
     }
 }
 
@@ -340,11 +343,11 @@ class GivenWoodleViewMvcState extends Stage<GivenWoodleViewMvcState> {
     }
 
     public GivenWoodleViewMvcState s3_client_returns_test_event_for_uuid(String uuid) throws Exception {
-        PollData testEvent = new PollData(
-                "John Doe",
-                "john@example.com",
-                "Team Meeting",
-                "Weekly sync",
+        return s3_client_returns_test_event_for_uuid_with_time_slots(uuid,
+                WoodleViewMvcTest.JOHN_DOE_NAME,
+                WoodleViewMvcTest.JOHN_DOE_EMAIL,
+                WoodleViewMvcTest.TEAM_MEETING_TITLE,
+                WoodleViewMvcTest.WEEKLY_SYNC_DESCRIPTION,
                 List.of(
                         new PollData.EventTimeSlot(
                                 LocalDate.parse("2024-03-20"),
@@ -355,8 +358,47 @@ class GivenWoodleViewMvcState extends Stage<GivenWoodleViewMvcState> {
                                 LocalTime.parse("14:00"),
                                 LocalTime.parse("15:00"))),
                 LocalDate.parse("2024-06-20"));
+    }
 
-        String jsonData = objectMapper.writeValueAsString(testEvent);
+    public GivenWoodleViewMvcState s3_client_returns_three_test_events_for_uuid(String uuid) throws Exception {
+        return s3_client_returns_test_event_for_uuid_with_time_slots(uuid,
+                WoodleViewMvcTest.JANE_SMITH_NAME,
+                WoodleViewMvcTest.JANE_SMITH_EMAIL,
+                WoodleViewMvcTest.PROJECT_PLANNING_TITLE,
+                WoodleViewMvcTest.QUARTERLY_PLANNING_DESCRIPTION,
+                List.of(
+                        // Two events on the same date (2024-03-15) with different times
+                        new PollData.EventTimeSlot(
+                                LocalDate.parse("2024-03-15"),
+                                LocalTime.parse("09:00"),
+                                LocalTime.parse("10:00")),
+                        new PollData.EventTimeSlot(
+                                LocalDate.parse("2024-03-15"),
+                                LocalTime.parse("14:00"),
+                                LocalTime.parse("15:00")),
+                        // One event on a different date (2024-03-18)
+                        new PollData.EventTimeSlot(
+                                LocalDate.parse("2024-03-18"),
+                                LocalTime.parse("11:00"),
+                                LocalTime.parse("12:00"))),
+                LocalDate.parse("2024-06-15"));
+    }
+
+    public GivenWoodleViewMvcState s3_client_returns_test_event_for_uuid_with_time_slots(
+            String uuid,
+            String name,
+            String email,
+            String title,
+            String description,
+            List<PollData.EventTimeSlot> timeSlots,
+            LocalDate expiryDate) throws Exception {
+        PollData testEvent = new PollData(name, email, title, description, timeSlots, expiryDate);
+        return s3_client_returns_poll_data_for_uuid(uuid, testEvent);
+    }
+
+    public GivenWoodleViewMvcState s3_client_returns_poll_data_for_uuid(String uuid, PollData pollData)
+            throws Exception {
+        String jsonData = objectMapper.writeValueAsString(pollData);
         GetObjectResponse response = GetObjectResponse.builder().build();
         ResponseInputStream<GetObjectResponse> responseStream = new ResponseInputStream<>(
                 response,
@@ -470,13 +512,13 @@ class WhenWoodleViewMvcAction extends Stage<WhenWoodleViewMvcAction> {
     }
 
     public WhenWoodleViewMvcAction user_sets_input_fields_on_schedule_event_step2_and_clicks_next(
-            Map<Integer, TestTimeSlot> timeSlots) throws Exception {
+            Map<Integer, TimeSlot> timeSlots) throws Exception {
         log.info("Setting input fields on schedule event step2 and submitting with {} time slots", timeSlots.size());
         MockHttpServletRequestBuilder requestBuilder = post("/schedule-event-step2").session(session);
 
-        for (Map.Entry<Integer, TestTimeSlot> entry : timeSlots.entrySet()) {
+        for (Map.Entry<Integer, TimeSlot> entry : timeSlots.entrySet()) {
             int index = entry.getKey();
-            TestTimeSlot slot = entry.getValue();
+            TimeSlot slot = entry.getValue();
             requestBuilder
                     .param("date" + index, slot.date())
                     .param("startTime" + index, slot.startTime())
@@ -488,8 +530,8 @@ class WhenWoodleViewMvcAction extends Stage<WhenWoodleViewMvcAction> {
     }
 
     public WhenWoodleViewMvcAction user_sets_input_fields_on_schedule_event_step2_and_clicks_next() throws Exception {
-        Map<Integer, TestTimeSlot> defaultTimeSlots = Map.of(
-                0, new TestTimeSlot("2024-03-20", "10:00", "11:00"));
+        Map<Integer, TimeSlot> defaultTimeSlots = Map.of(
+                0, new TimeSlot("2024-03-20", "10:00", "11:00"));
         return user_sets_input_fields_on_schedule_event_step2_and_clicks_next(defaultTimeSlots);
     }
 
@@ -578,6 +620,13 @@ class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
     @ScenarioState
     private S3Client s3Client;
 
+    // Helper method to reduce HTML parsing duplication
+    private Document getDocumentFromResult() throws Exception {
+        MvcResult result = resultAction.andReturn();
+        String content = result.getResponse().getContentAsString();
+        return Jsoup.parse(content);
+    }
+
     private void addToHistory(String page) {
         log.info("Adding to history - Current page: {}, New page: {}, History size: {}",
                 currentPage, page, navigationHistory.size());
@@ -625,20 +674,18 @@ class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
     }
 
     public ThenWoodleViewMvcOutcome step2_form_should_have_all_required_fields() throws Exception {
-        MvcResult result = resultAction.andReturn();
-        String content = result.getResponse().getContentAsString();
-        org.jsoup.nodes.Document doc = org.jsoup.Jsoup.parse(content);
+        Document doc = getDocumentFromResult();
         // Check for indexed date input (at least one time slot should exist)
-        org.jsoup.select.Elements dateInputs = doc.select("input[type=date][id=date0][name=date0]");
-        org.jsoup.select.Elements startTimeInputs = doc.select("input[type=time][id=startTime0][name=startTime0]");
-        org.jsoup.select.Elements endTimeInputs = doc.select("input[type=time][id=endTime0][name=endTime0]");
-        org.jsoup.select.Elements backButtons = doc.select("button[type=button]:contains(Back)");
-        org.jsoup.select.Elements nextButtons = doc.select("button[type=submit]");
-        org.assertj.core.api.Assertions.assertThat(dateInputs.size()).isEqualTo(1);
-        org.assertj.core.api.Assertions.assertThat(startTimeInputs.size()).isEqualTo(1);
-        org.assertj.core.api.Assertions.assertThat(endTimeInputs.size()).isEqualTo(1);
-        org.assertj.core.api.Assertions.assertThat(backButtons.text()).containsIgnoringCase("back");
-        org.assertj.core.api.Assertions.assertThat(nextButtons.text()).containsIgnoringCase("next");
+        Elements dateInputs = doc.select("input[type=date][id=date0][name=date0]");
+        Elements startTimeInputs = doc.select("input[type=time][id=startTime0][name=startTime0]");
+        Elements endTimeInputs = doc.select("input[type=time][id=endTime0][name=endTime0]");
+        Elements backButtons = doc.select("button[type=button]:contains(Back)");
+        Elements nextButtons = doc.select("button[type=submit]");
+        assertThat(dateInputs.size()).isEqualTo(1);
+        assertThat(startTimeInputs.size()).isEqualTo(1);
+        assertThat(endTimeInputs.size()).isEqualTo(1);
+        assertThat(backButtons.text()).containsIgnoringCase("back");
+        assertThat(nextButtons.text()).containsIgnoringCase("next");
         return self();
     }
 
@@ -667,9 +714,7 @@ class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
     }
 
     public ThenWoodleViewMvcOutcome step3_form_should_have_expiry_date(String expectedDate) throws Exception {
-        MvcResult result = resultAction.andReturn();
-        String content = result.getResponse().getContentAsString();
-        Document doc = Jsoup.parse(content);
+        Document doc = getDocumentFromResult();
         String expiryValue = doc.select("input[type=date][id=expiryDate][name=expiryDate]").attr("value");
         assertThat(expiryValue).isEqualTo(expectedDate);
         return self();
@@ -677,7 +722,7 @@ class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
 
     public ThenWoodleViewMvcOutcome user_should_see_step2_form_with_previous_data() throws Exception {
         return step2_form_should_show_previous_data(
-                Map.of(0, new TestTimeSlot("2024-03-20", "10:00", "11:00")));
+                Map.of(0, new TimeSlot("2024-03-20", "10:00", "11:00")));
     }
 
     public ThenWoodleViewMvcOutcome user_should_see_summary_page() throws Exception {
@@ -693,11 +738,11 @@ class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
 
     public ThenWoodleViewMvcOutcome summary_page_should_show_all_entered_data() throws Exception {
         return summary_page_should_show_all_entered_data(Map.of(
-                0, new TestTimeSlot("2024-03-20", "10:00", "11:00")));
+                0, new TimeSlot("2024-03-20", "10:00", "11:00")));
     }
 
     public ThenWoodleViewMvcOutcome summary_page_should_show_all_entered_data(
-            Map<Integer, TestTimeSlot> expectedTimeSlots) throws Exception {
+            Map<Integer, TimeSlot> expectedTimeSlots) throws Exception {
         MvcResult result = resultAction.andReturn();
         String content = result.getResponse().getContentAsString();
         assertThat(content)
@@ -710,7 +755,7 @@ class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
                 .contains("11:00")
                 .contains("2024-06-20");
 
-        for (TestTimeSlot slot : expectedTimeSlots.values()) {
+        for (TimeSlot slot : expectedTimeSlots.values()) {
             assertThat(content).contains(slot.date());
             assertThat(content).contains(slot.startTime());
             assertThat(content).contains(slot.endTime());
@@ -719,9 +764,7 @@ class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
     }
 
     public ThenWoodleViewMvcOutcome summary_page_should_show_event_url() throws Exception {
-        MvcResult result = resultAction.andReturn();
-        String content = result.getResponse().getContentAsString();
-        Document doc = Jsoup.parse(content);
+        Document doc = getDocumentFromResult();
         Elements eventUrl = doc.select("div[data-test-section='poll-url'] div.poll-url");
         assertThat(eventUrl.size()).isEqualTo(1);
         assertThat(eventUrl.text()).matches(
@@ -735,9 +778,7 @@ class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
     }
 
     public ThenWoodleViewMvcOutcome step2_form_should_have_plus_button() throws Exception {
-        MvcResult result = resultAction.andReturn();
-        String content = result.getResponse().getContentAsString();
-        Document doc = Jsoup.parse(content);
+        Document doc = getDocumentFromResult();
 
         // Check for plus button
         Elements plusButtons = doc.select("button[type=button].add-time-slot");
@@ -751,16 +792,14 @@ class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
     }
 
     public ThenWoodleViewMvcOutcome step2_form_should_show_previous_data(
-            Map<Integer, TestTimeSlot> expectedTimeSlots)
+            Map<Integer, TimeSlot> expectedTimeSlots)
             throws Exception {
         log.info("Verifying step2 form with previous data");
-        MvcResult result = resultAction.andReturn();
-        String content = result.getResponse().getContentAsString();
-        Document doc = Jsoup.parse(content);
+        Document doc = getDocumentFromResult();
 
-        for (Map.Entry<Integer, TestTimeSlot> entry : expectedTimeSlots.entrySet()) {
+        for (Map.Entry<Integer, TimeSlot> entry : expectedTimeSlots.entrySet()) {
             int index = entry.getKey();
-            TestTimeSlot expectedSlot = entry.getValue();
+            TimeSlot expectedSlot = entry.getValue();
             Element dateInput = doc.select("input[data-test='date-" + index + "']").first();
             Element startTimeInput = doc.select("input[data-test='startTime-" + index + "']").first();
             Element endTimeInput = doc.select("input[data-test='endTime-" + index + "']").first();
@@ -774,9 +813,7 @@ class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
     }
 
     public ThenWoodleViewMvcOutcome step2_form_should_preserve_all_time_slots() throws Exception {
-        MvcResult result = resultAction.andReturn();
-        String content = result.getResponse().getContentAsString();
-        Document doc = Jsoup.parse(content);
+        Document doc = getDocumentFromResult();
 
         // Check that we have two sets of date/time input fields
         Elements dateInputs = doc.select("input[data-test^='date-']");
@@ -819,7 +856,7 @@ class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
 
     public ThenWoodleViewMvcOutcome step2_form_should_show_previous_data() throws Exception {
         return step2_form_should_show_previous_data(
-                Map.of(0, new TestTimeSlot("2024-03-20", "10:00", "11:00")));
+                Map.of(0, new TimeSlot("2024-03-20", "10:00", "11:00")));
     }
 
     public ThenWoodleViewMvcOutcome step2_form_should_have_additional_time_slot_fields() throws Exception {
@@ -873,6 +910,114 @@ class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
         assertThat(step2Form.timeSlots()).hasSize(2);
         assertThat(step2Form.timeSlots().get(0).date()).isEqualTo("2024-03-20");
         assertThat(step2Form.timeSlots().get(1).date()).isEmpty();
+        return self();
+    }
+
+    public ThenWoodleViewMvcOutcome summary_page_should_have_events_table() throws Exception {
+        MvcResult result = resultAction.andReturn();
+        String content = result.getResponse().getContentAsString();
+        Document doc = Jsoup.parse(content);
+
+        // Check that a table with data-test="events-table" exists
+        Elements eventsTable = doc.select("table[data-test='events-table']");
+        assertThat(eventsTable.size()).isEqualTo(1);
+
+        return self();
+    }
+
+    public ThenWoodleViewMvcOutcome events_table_should_have_column_headers() throws Exception {
+        MvcResult result = resultAction.andReturn();
+        String content = result.getResponse().getContentAsString();
+        Document doc = Jsoup.parse(content);
+
+        // Check for table headers
+        Elements tableHeaders = doc.select("table[data-test='events-table'] thead tr th");
+        assertThat(tableHeaders.size()).isGreaterThanOrEqualTo(1);
+
+        // First column should be for participant names
+        Element firstHeader = tableHeaders.first();
+        assertThat(firstHeader.attr("data-test")).isEqualTo("participant-header");
+
+        return self();
+    }
+
+    public ThenWoodleViewMvcOutcome events_table_should_group_dates_together() throws Exception {
+        MvcResult result = resultAction.andReturn();
+        String content = result.getResponse().getContentAsString();
+        Document doc = Jsoup.parse(content);
+
+        // Check that dates are grouped - same dates should appear next to each other
+        Elements dateHeaders = doc.select("table[data-test='events-table'] thead tr th[data-test-date]");
+
+        // We should have date headers for both 2024-03-15 (twice) and 2024-03-18 (once)
+        // But dates should be grouped so 2024-03-15 headers come together
+        String previousDate = null;
+        boolean foundSecondDate = false;
+
+        for (Element header : dateHeaders) {
+            String currentDate = header.attr("data-test-date");
+            if (previousDate != null && !previousDate.equals(currentDate)) {
+                if (foundSecondDate && currentDate.equals("2024-03-15")) {
+                    // If we already found a second date and we're back to 2024-03-15,
+                    // then the dates are not grouped properly
+                    org.junit.jupiter.api.Assertions.fail("Dates are not properly grouped together");
+                }
+                foundSecondDate = true;
+            }
+            previousDate = currentDate;
+        }
+
+        return self();
+    }
+
+    public ThenWoodleViewMvcOutcome events_table_should_order_dates_and_times_correctly() throws Exception {
+        MvcResult result = resultAction.andReturn();
+        String content = result.getResponse().getContentAsString();
+        Document doc = Jsoup.parse(content);
+
+        // Check that time slot headers are ordered chronologically
+        Elements timeHeaders = doc.select("table[data-test='events-table'] thead tr th[data-test-time]");
+
+        // Expected order: 2024-03-15 09:00-10:00, 2024-03-15 14:00-15:00, 2024-03-18
+        // 11:00-12:00
+        assertThat(timeHeaders.size()).isEqualTo(3);
+
+        // First time slot should be 2024-03-15 09:00-10:00
+        Element firstTimeHeader = timeHeaders.get(0);
+        assertThat(firstTimeHeader.attr("data-test-date")).isEqualTo("2024-03-15");
+        assertThat(firstTimeHeader.attr("data-test-start-time")).isEqualTo("09:00");
+        assertThat(firstTimeHeader.attr("data-test-end-time")).isEqualTo("10:00");
+
+        // Second time slot should be 2024-03-15 14:00-15:00
+        Element secondTimeHeader = timeHeaders.get(1);
+        assertThat(secondTimeHeader.attr("data-test-date")).isEqualTo("2024-03-15");
+        assertThat(secondTimeHeader.attr("data-test-start-time")).isEqualTo("14:00");
+        assertThat(secondTimeHeader.attr("data-test-end-time")).isEqualTo("15:00");
+
+        // Third time slot should be 2024-03-18 11:00-12:00
+        Element thirdTimeHeader = timeHeaders.get(2);
+        assertThat(thirdTimeHeader.attr("data-test-date")).isEqualTo("2024-03-18");
+        assertThat(thirdTimeHeader.attr("data-test-start-time")).isEqualTo("11:00");
+        assertThat(thirdTimeHeader.attr("data-test-end-time")).isEqualTo("12:00");
+
+        return self();
+    }
+
+    public ThenWoodleViewMvcOutcome events_table_should_have_empty_name_input_field() throws Exception {
+        MvcResult result = resultAction.andReturn();
+        String content = result.getResponse().getContentAsString();
+        Document doc = Jsoup.parse(content);
+
+        // Check for empty input field for participant name in the first column of the
+        // data row
+        Elements nameInputs = doc
+                .select("table[data-test='events-table'] tbody tr td input[data-test='participant-name']");
+        assertThat(nameInputs.size()).isEqualTo(1);
+
+        Element nameInput = nameInputs.first();
+        assertThat(nameInput.attr("value")).isEmpty();
+        assertThat(nameInput.attr("type")).isEqualTo("text");
+
         return self();
     }
 }

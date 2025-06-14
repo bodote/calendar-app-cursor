@@ -17,6 +17,7 @@ alwaysApply: true
         * Only implement the infrastructure (like S3 integration) after the test fails due to missing functionality.
         * a compiling failure does NOT count as a "red" failing test. you need to make the test and productino code compile without errors, then run the test , and only if the test just added is "red" or failing , then implement the production code that makes the test pass and "green" 
         * after the test compiles but is still not passing "red" you must not proceed until the user has reviewed the test and gave it's "go" to you to go one with the implementation
+        * you are not allowed to make ANY changes to the production code before the use has verified the new test code
 * use a hexagonal architecture, the code should be organized in a way that the domain logic is separated from the infrastructure code.
 * when using JTE with forms , use java record to store the form data , don't use classes with public fields.
 
