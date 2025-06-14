@@ -9,10 +9,9 @@ e.g. when running the spring boot initializr ask me for the java version i want 
    * Use a strict TDD approach:
         * Only create stubs or interfaces for services in the domain or port layer until the test requires the real implementation.
         * Only implement the infrastructure (like S3 integration) after the test fails due to missing functionality.
+        * a compiling failure does NOT count as a "red" failing test. you need to make the test and productino code compile without errors, then run the test , and only if the test just added is "red" or failing , then implement the production code that makes the test pass and "green" 
 * use a hexagonal architecture, the code should be organized in a way that the domain logic is separated from the infrastructure code.
 * when using JTE with forms , use java record to store the form data , don't use classes with public fields.
- 
-
 
 
 

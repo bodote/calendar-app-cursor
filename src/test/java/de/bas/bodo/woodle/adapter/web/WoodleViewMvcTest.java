@@ -183,7 +183,9 @@ class WoodleViewMvcTest
                 .and().s3_client_returns_test_event_for_uuid(testUuid);
         when().user_accesses_event_url_without_session(testUuid);
         then().user_should_see_summary_page()
-                .and().summary_page_should_show_all_entered_data();
+                .and().summary_page_should_show_all_entered_data(Map.of(
+                        0, new TestTimeSlot("2024-03-20", "10:00", "11:00"),
+                        1, new TestTimeSlot("2024-03-21", "14:00", "15:00")));
     }
 
     @Test
@@ -217,6 +219,22 @@ class WoodleViewMvcTest
     }
 
     @Test
+    @DisplayName("Should ignore empty time slots when submitting from step 2")
+    void should_ignore_empty_time_slots_when_submitting() throws Exception {
+        given().mock_mvc_is_configured(mockMvc)
+                .and().user_is_on_homepage()
+                .and().user_has_test_data(TEST_NAME, TEST_EMAIL, TEST_TITLE, TEST_DESCRIPTION);
+        when().user_clicks_schedule_event_button()
+                .and().user_sets_input_fields_on_schedule_event_page_and_clicks_next()
+                .and().user_sets_input_fields_on_schedule_event_step2_and_clicks_next(Map.of(
+                        0, new TestTimeSlot("2024-03-20", "10:00", "11:00"),
+                        1, new TestTimeSlot("", "", "")))
+                .and().user_clicks_plus_button();
+        then().user_should_see_step2_form()
+                .and().only_one_time_slot_should_be_in_session();
+    }
+
+    @Test
     @DisplayName("Should allow adding multiple time slots and preserve their data")
     void should_allow_adding_multiple_time_slots() throws Exception {
         given().mock_mvc_is_configured(mockMvc)
@@ -232,6 +250,25 @@ class WoodleViewMvcTest
                 .and().step2_form_should_show_previous_data()
                 .and().step2_form_should_have_additional_time_slot_fields()
                 .and().step2_form_should_preserve_all_time_slots();
+    }
+
+    @Test
+    @DisplayName("Should display all entered time slots on the summary page")
+    void should_display_all_entered_time_slots_on_summary_page() throws Exception {
+        given().mock_mvc_is_configured(mockMvc)
+                .and().s3_client_is_configured(s3Client)
+                .and().user_is_on_homepage()
+                .and().user_has_test_data("John Doe", "john@example.com", "Team Meeting", "Weekly sync");
+        when().user_clicks_schedule_event_button()
+                .and().user_sets_input_fields_on_schedule_event_page_and_clicks_next()
+                .and().user_sets_input_fields_on_schedule_event_step2_and_clicks_next(Map.of(
+                        0, new TestTimeSlot("2024-03-20", "10:00", "11:00"),
+                        1, new TestTimeSlot("2024-03-21", "14:00", "15:00")))
+                .and().user_sets_input_fields_on_schedule_event_step3_and_clicks_next();
+        then().user_should_see_summary_page()
+                .and().summary_page_should_show_all_entered_data(Map.of(
+                        0, new TestTimeSlot("2024-03-20", "10:00", "11:00"),
+                        1, new TestTimeSlot("2024-03-21", "14:00", "15:00")));
     }
 }
 
@@ -287,9 +324,15 @@ class GivenWoodleViewMvcState extends Stage<GivenWoodleViewMvcState> {
                 "john@example.com",
                 "Team Meeting",
                 "Weekly sync",
-                LocalDate.parse("2024-03-20"),
-                LocalTime.parse("10:00"),
-                LocalTime.parse("11:00"),
+                List.of(
+                        new PollData.EventTimeSlot(
+                                LocalDate.parse("2024-03-20"),
+                                LocalTime.parse("10:00"),
+                                LocalTime.parse("11:00")),
+                        new PollData.EventTimeSlot(
+                                LocalDate.parse("2024-03-21"),
+                                LocalTime.parse("14:00"),
+                                LocalTime.parse("15:00"))),
                 LocalDate.parse("2024-06-20"));
 
         String jsonData = objectMapper.writeValueAsString(testEvent);
@@ -597,6 +640,12 @@ class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
     }
 
     public ThenWoodleViewMvcOutcome summary_page_should_show_all_entered_data() throws Exception {
+        return summary_page_should_show_all_entered_data(Map.of(
+                0, new TestTimeSlot("2024-03-20", "10:00", "11:00")));
+    }
+
+    public ThenWoodleViewMvcOutcome summary_page_should_show_all_entered_data(
+            Map<Integer, TestTimeSlot> expectedTimeSlots) throws Exception {
         MvcResult result = resultAction.andReturn();
         String content = result.getResponse().getContentAsString();
         assertThat(content)
@@ -608,6 +657,12 @@ class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
                 .contains("10:00")
                 .contains("11:00")
                 .contains("2024-06-20");
+
+        for (TestTimeSlot slot : expectedTimeSlots.values()) {
+            assertThat(content).contains(slot.date());
+            assertThat(content).contains(slot.startTime());
+            assertThat(content).contains(slot.endTime());
+        }
         return self();
     }
 
@@ -755,6 +810,17 @@ class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
         assertThat(startTimeInput.attr("value")).isEmpty();
         assertThat(endTimeInput.attr("value")).isEmpty();
 
+        return self();
+    }
+
+    public ThenWoodleViewMvcOutcome only_one_time_slot_should_be_in_session() throws Exception {
+        MvcResult result = resultAction.andReturn();
+        MockHttpSession session = (MockHttpSession) result.getRequest().getSession();
+        de.bas.bodo.woodle.view.ScheduleEventStep2Form step2Form = (de.bas.bodo.woodle.view.ScheduleEventStep2Form) session
+                .getAttribute("step2FormData");
+        assertThat(step2Form.timeSlots()).hasSize(2);
+        assertThat(step2Form.timeSlots().get(0).date()).isEqualTo("2024-03-20");
+        assertThat(step2Form.timeSlots().get(1).date()).isEmpty();
         return self();
     }
 }

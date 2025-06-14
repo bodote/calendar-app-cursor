@@ -3,6 +3,7 @@ package de.bas.bodo.woodle.adapter.web;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
@@ -64,17 +65,13 @@ public class ScheduleEventController {
         session.setAttribute("step3FormData", step3Form);
 
         // Convert string values to LocalDate and LocalTime
-        TimeSlot firstSlot = step2Form.timeSlots().isEmpty() ? null
-                : step2Form.timeSlots().get(0);
-        LocalDate eventDate = firstSlot != null && firstSlot.date() != null && !firstSlot.date().isEmpty()
-                ? LocalDate.parse(firstSlot.date(), DATE_FORMATTER)
-                : null;
-        LocalTime startTime = firstSlot != null && firstSlot.startTime() != null && !firstSlot.startTime().isEmpty()
-                ? LocalTime.parse(firstSlot.startTime(), TIME_FORMATTER)
-                : null;
-        LocalTime endTime = firstSlot != null && firstSlot.endTime() != null && !firstSlot.endTime().isEmpty()
-                ? LocalTime.parse(firstSlot.endTime(), TIME_FORMATTER)
-                : null;
+        List<PollData.EventTimeSlot> eventTimeSlots = step2Form.timeSlots().stream()
+                .filter(slot -> !slot.date().isEmpty() && !slot.startTime().isEmpty() && !slot.endTime().isEmpty())
+                .map(slot -> new PollData.EventTimeSlot(
+                        LocalDate.parse(slot.date(), DATE_FORMATTER),
+                        LocalTime.parse(slot.startTime(), TIME_FORMATTER),
+                        LocalTime.parse(slot.endTime(), TIME_FORMATTER)))
+                .toList();
         LocalDate expiryDateParsed = LocalDate.parse(expiryDate, DATE_FORMATTER);
 
         // Create poll data
@@ -83,9 +80,7 @@ public class ScheduleEventController {
                 step1Form.email(),
                 step1Form.title(),
                 step1Form.description(),
-                eventDate,
-                startTime,
-                endTime,
+                eventTimeSlots,
                 expiryDateParsed);
 
         // Store poll data and get URL
@@ -160,11 +155,14 @@ public class ScheduleEventController {
                 pollData.title(),
                 pollData.description());
 
-        ScheduleEventStep2Form step2Form = new ScheduleEventStep2Form(
-                java.util.List.of(new TimeSlot(
-                        pollData.date().format(DATE_FORMATTER),
-                        pollData.startTime().format(TIME_FORMATTER),
-                        pollData.endTime().format(TIME_FORMATTER))));
+        List<TimeSlot> timeSlots = pollData.timeSlots().stream()
+                .map(slot -> new TimeSlot(
+                        slot.date().format(DATE_FORMATTER),
+                        slot.startTime().format(TIME_FORMATTER),
+                        slot.endTime().format(TIME_FORMATTER)))
+                .toList();
+
+        ScheduleEventStep2Form step2Form = new ScheduleEventStep2Form(timeSlots);
 
         ScheduleEventStep3Form step3Form = new ScheduleEventStep3Form(
                 pollData.expiryDate().format(DATE_FORMATTER));
