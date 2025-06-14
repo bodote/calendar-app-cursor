@@ -23,6 +23,7 @@ import org.jsoup.select.Elements;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -270,6 +271,26 @@ class WoodleViewMvcTest
                         0, new TestTimeSlot("2024-03-20", "10:00", "11:00"),
                         1, new TestTimeSlot("2024-03-21", "14:00", "15:00")));
     }
+
+    @Test
+    @DisplayName("Should save and reload multiple time slots correctly")
+    void should_save_and_reload_multiple_time_slots() throws Exception {
+        given().mock_mvc_is_configured(mockMvc)
+                .and().s3_client_is_configured(s3Client)
+                .and().user_is_on_homepage()
+                .and().user_has_test_data("John Doe", "john@example.com", "Team Meeting", "Weekly sync");
+        when().user_clicks_schedule_event_button()
+                .and().user_sets_input_fields_on_schedule_event_page_and_clicks_next()
+                .and().user_sets_input_fields_on_schedule_event_step2_and_clicks_next(Map.of(
+                        0, new TestTimeSlot("2024-03-20", "10:00", "11:00"),
+                        1, new TestTimeSlot("2024-03-21", "14:00", "15:00")))
+                .and().user_sets_input_fields_on_schedule_event_step3_and_clicks_next()
+                .and().user_captures_event_url_and_reloads_in_new_session();
+        then().user_should_see_summary_page()
+                .and().summary_page_should_show_all_entered_data(Map.of(
+                        0, new TestTimeSlot("2024-03-20", "10:00", "11:00"),
+                        1, new TestTimeSlot("2024-03-21", "14:00", "15:00")));
+    }
 }
 
 class GivenWoodleViewMvcState extends Stage<GivenWoodleViewMvcState> {
@@ -363,11 +384,16 @@ class WhenWoodleViewMvcAction extends Stage<WhenWoodleViewMvcAction> {
     @ScenarioState
     private String description;
     @ScenarioState
+    private S3Client s3Client;
+    @ScenarioState
     private List<String> navigationHistory = new ArrayList<>();
     @ScenarioState
     private String currentPage;
     @ScenarioState
     private String eventUrl;
+
+    @ScenarioState
+    private ArgumentCaptor<RequestBody> s3RequestBodyCaptor;
 
     private void addToHistory(String page) {
         log.info("Adding to history - Current page: {}, New page: {}, History size: {}",
@@ -498,6 +524,32 @@ class WhenWoodleViewMvcAction extends Stage<WhenWoodleViewMvcAction> {
                 .param("startTime", "10:00")
                 .param("endTime", "11:00")
                 .session(session));
+        return self();
+    }
+
+    public WhenWoodleViewMvcAction user_captures_event_url_and_reloads_in_new_session() throws Exception {
+        // 1. Capture the event URL from the page
+        MvcResult result = resultAction.andReturn();
+        String content = result.getResponse().getContentAsString();
+        Document doc = Jsoup.parse(content);
+        String url = doc.select("div[data-test-section='poll-url'] div.poll-url").text();
+        assertThat(url).isNotBlank();
+        this.eventUrl = url;
+
+        // 2. Capture what was sent to S3
+        s3RequestBodyCaptor = ArgumentCaptor.forClass(RequestBody.class);
+        verify(s3Client).putObject(any(PutObjectRequest.class), s3RequestBodyCaptor.capture());
+
+        // 3. Set up the S3 mock to return the captured data
+        RequestBody capturedBody = s3RequestBodyCaptor.getValue();
+        GetObjectResponse getResponse = GetObjectResponse.builder().build();
+        ResponseInputStream<GetObjectResponse> responseStream = new ResponseInputStream<>(
+                getResponse,
+                new ByteArrayInputStream(capturedBody.contentStreamProvider().newStream().readAllBytes()));
+        doReturn(responseStream).when(s3Client).getObject(any(GetObjectRequest.class));
+
+        // 4. Access the URL in a new session
+        resultAction = mockMvc.perform(get(this.eventUrl));
         return self();
     }
 }
