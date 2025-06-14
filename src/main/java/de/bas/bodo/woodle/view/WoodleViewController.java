@@ -72,7 +72,7 @@ public class WoodleViewController {
             Model model) {
 
         // Collect all time slots from indexed parameters
-        List<ScheduleEventStep2Form.TimeSlot> timeSlots = new ArrayList<>();
+        List<TimeSlot> timeSlots = new ArrayList<>();
         int index = 0;
 
         while (allParams.containsKey("date" + index)) {
@@ -82,7 +82,7 @@ public class WoodleViewController {
 
             // Only add non-empty time slots
             if (!date.isEmpty() && !startTime.isEmpty() && !endTime.isEmpty()) {
-                timeSlots.add(new ScheduleEventStep2Form.TimeSlot(date, startTime, endTime));
+                timeSlots.add(new TimeSlot(date, startTime, endTime));
             }
             index++;
         }
@@ -95,7 +95,7 @@ public class WoodleViewController {
             String startTime = allParams.get("startTime");
             String endTime = allParams.get("endTime");
             if (!date.isEmpty() && !startTime.isEmpty() && !endTime.isEmpty()) {
-                timeSlots.add(new ScheduleEventStep2Form.TimeSlot(date, startTime, endTime));
+                timeSlots.add(new TimeSlot(date, startTime, endTime));
             }
         }
 
@@ -119,7 +119,7 @@ public class WoodleViewController {
             currentForm = new ScheduleEventStep2Form(date, startTime, endTime);
             log.debug("Initial timeSlots: {}", currentForm.timeSlots());
         } else {
-            List<ScheduleEventStep2Form.TimeSlot> timeSlots = new ArrayList<>(currentForm.timeSlots());
+            List<TimeSlot> timeSlots = new ArrayList<>(currentForm.timeSlots());
             log.debug("Before adding: size={}, content={}", timeSlots.size(), timeSlots);
             boolean submittedSlotIsEmpty = date.isEmpty() && startTime.isEmpty() && endTime.isEmpty();
             log.debug("Submitted slot is empty: {}", submittedSlotIsEmpty);
@@ -134,9 +134,9 @@ public class WoodleViewController {
             if (!submittedSlotIsEmpty && !slotExists) {
                 if (timeSlots.isEmpty()) {
                     log.debug("List is empty, adding submitted slot.");
-                    timeSlots.add(new ScheduleEventStep2Form.TimeSlot(date, startTime, endTime));
+                    timeSlots.add(new TimeSlot(date, startTime, endTime));
                 } else {
-                    ScheduleEventStep2Form.TimeSlot last = timeSlots.get(timeSlots.size() - 1);
+                    TimeSlot last = timeSlots.get(timeSlots.size() - 1);
                     boolean lastIsEmpty = last.date().isEmpty() && last.startTime().isEmpty()
                             && last.endTime().isEmpty();
                     log.debug("Last slot: {} (empty={})", last, lastIsEmpty);
@@ -144,10 +144,10 @@ public class WoodleViewController {
                     if (lastIsEmpty) {
                         log.debug("Last slot is empty, updating it with submitted values.");
                         timeSlots.set(timeSlots.size() - 1,
-                                new ScheduleEventStep2Form.TimeSlot(date, startTime, endTime));
+                                new TimeSlot(date, startTime, endTime));
                     } else {
                         log.debug("Last slot is not empty, adding new slot.");
-                        timeSlots.add(new ScheduleEventStep2Form.TimeSlot(date, startTime, endTime));
+                        timeSlots.add(new TimeSlot(date, startTime, endTime));
                     }
                 }
             } else {
@@ -155,12 +155,12 @@ public class WoodleViewController {
             }
 
             // Always ensure only one empty slot at the end
-            ScheduleEventStep2Form.TimeSlot last = timeSlots.isEmpty() ? null : timeSlots.get(timeSlots.size() - 1);
+            TimeSlot last = timeSlots.isEmpty() ? null : timeSlots.get(timeSlots.size() - 1);
             boolean lastIsEmpty = last != null && last.date().isEmpty() && last.startTime().isEmpty()
                     && last.endTime().isEmpty();
             if (!lastIsEmpty) {
                 log.debug("Ensuring one empty slot at the end.");
-                timeSlots.add(new ScheduleEventStep2Form.TimeSlot("", "", ""));
+                timeSlots.add(new TimeSlot("", "", ""));
             } else {
                 log.debug("Last slot is already empty, not adding another.");
             }

@@ -19,6 +19,7 @@ import de.bas.bodo.woodle.domain.service.PollStorageService;
 import de.bas.bodo.woodle.view.ScheduleEventStep1Form;
 import de.bas.bodo.woodle.view.ScheduleEventStep2Form;
 import de.bas.bodo.woodle.view.ScheduleEventStep3Form;
+import de.bas.bodo.woodle.view.TimeSlot;
 import jakarta.servlet.http.HttpSession;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -63,7 +64,7 @@ public class ScheduleEventController {
         session.setAttribute("step3FormData", step3Form);
 
         // Convert string values to LocalDate and LocalTime
-        ScheduleEventStep2Form.TimeSlot firstSlot = step2Form.timeSlots().isEmpty() ? null
+        TimeSlot firstSlot = step2Form.timeSlots().isEmpty() ? null
                 : step2Form.timeSlots().get(0);
         LocalDate eventDate = firstSlot != null && firstSlot.date() != null && !firstSlot.date().isEmpty()
                 ? LocalDate.parse(firstSlot.date(), DATE_FORMATTER)
@@ -124,7 +125,7 @@ public class ScheduleEventController {
     public String showStep3Form(Model model, HttpSession session) {
         ScheduleEventStep2Form step2Form = (ScheduleEventStep2Form) session.getAttribute("step2FormData");
         if (step2Form != null && !step2Form.timeSlots().isEmpty()) {
-            ScheduleEventStep2Form.TimeSlot firstSlot = step2Form.timeSlots().get(0);
+            TimeSlot firstSlot = step2Form.timeSlots().get(0);
             if (firstSlot.date() != null && !firstSlot.date().isEmpty()) {
                 LocalDate eventDate = LocalDate.parse(firstSlot.date(), DATE_FORMATTER);
                 LocalDate defaultExpiryDate = eventDate.plusMonths(3);
@@ -160,7 +161,7 @@ public class ScheduleEventController {
                 pollData.description());
 
         ScheduleEventStep2Form step2Form = new ScheduleEventStep2Form(
-                java.util.List.of(new ScheduleEventStep2Form.TimeSlot(
+                java.util.List.of(new TimeSlot(
                         pollData.date().format(DATE_FORMATTER),
                         pollData.startTime().format(TIME_FORMATTER),
                         pollData.endTime().format(TIME_FORMATTER))));

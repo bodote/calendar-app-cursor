@@ -44,6 +44,7 @@ import com.tngtech.jgiven.annotation.ScenarioStage;
 import com.tngtech.jgiven.annotation.ScenarioState;
 import com.tngtech.jgiven.junit5.ScenarioTest;
 
+import de.bas.bodo.woodle.adapter.web.WoodleViewMvcTest.TestTimeSlot;
 import de.bas.bodo.woodle.domain.model.PollData;
 import de.bas.bodo.woodle.domain.service.PollStorageService;
 import de.bas.bodo.woodle.view.WoodleViewController;
@@ -84,12 +85,12 @@ class WoodleViewMvcTest
     private static final String TEST_TITLE = "My Poll";
     private static final String TEST_DESCRIPTION = "Some description";
 
-    public static class TimeSlot {
+    public static class TestTimeSlot {
         private final String date;
         private final String startTime;
         private final String endTime;
 
-        public TimeSlot(String date, String startTime, String endTime) {
+        public TestTimeSlot(String date, String startTime, String endTime) {
             this.date = date;
             this.startTime = startTime;
             this.endTime = endTime;
@@ -194,28 +195,24 @@ class WoodleViewMvcTest
         when().user_clicks_schedule_event_button()
                 .and().user_sets_input_fields_on_schedule_event_page_and_clicks_next()
                 .and().user_sets_input_fields_on_schedule_event_step2_and_clicks_next(Map.of(
-                        0, new de.bas.bodo.woodle.adapter.web.TimeSlot("2024-03-20", "10:00", "11:00")))
+                        0, new TestTimeSlot("2024-03-20", "10:00", "11:00")))
                 .and().user_clicks_plus_button();
         then().user_should_see_step2_form()
                 .and().step2_form_should_have_plus_button()
-                .and()
-                .step2_form_should_show_previous_data(
-                        List.of(new de.bas.bodo.woodle.adapter.web.TimeSlot("2024-03-20", "10:00", "11:00")))
+                .and().step2_form_should_show_previous_data(Map.of(
+                        0, new TestTimeSlot("2024-03-20", "10:00", "11:00")))
                 .and().step2_form_should_have_additional_time_slot_fields()
                 .and().step2_form_should_have_empty_slot(1);
         when().user_sets_input_fields_on_schedule_event_step2_and_clicks_next(Map.of(
-                0, new de.bas.bodo.woodle.adapter.web.TimeSlot("2024-03-21", "14:00", "15:00"),
-                1, new de.bas.bodo.woodle.adapter.web.TimeSlot("2024-03-20", "10:00", "11:00")))
+                0, new TestTimeSlot("2024-03-21", "14:00", "15:00"),
+                1, new TestTimeSlot("2024-03-20", "10:00", "11:00")))
                 .and().user_clicks_plus_button();
         then().user_should_see_step2_form()
                 .and().step2_form_should_have_plus_button()
-                .and().step2_form_should_show_previous_data(List.of(
-                        new de.bas.bodo.woodle.adapter.web.TimeSlot("2024-03-21", "14:00", "15:00"),
-                        new de.bas.bodo.woodle.adapter.web.TimeSlot("2024-03-20", "10:00", "11:00")))
+                .and().step2_form_should_show_previous_data(Map.of(
+                        0, new TestTimeSlot("2024-03-21", "14:00", "15:00"),
+                        1, new TestTimeSlot("2024-03-20", "10:00", "11:00")))
                 .and().step2_form_should_have_three_time_slots()
-                .and().step2_form_should_show_previous_data(List.of(
-                        new de.bas.bodo.woodle.adapter.web.TimeSlot("2024-03-21", "14:00", "15:00"),
-                        new de.bas.bodo.woodle.adapter.web.TimeSlot("2024-03-20", "10:00", "11:00")))
                 .and().step2_form_should_have_empty_slot(2);
     }
 
@@ -228,7 +225,7 @@ class WoodleViewMvcTest
         when().user_clicks_schedule_event_button()
                 .and().user_sets_input_fields_on_schedule_event_page_and_clicks_next()
                 .and().user_sets_input_fields_on_schedule_event_step2_and_clicks_next(Map.of(
-                        0, new de.bas.bodo.woodle.adapter.web.TimeSlot("2024-03-20", "10:00", "11:00")))
+                        0, new TestTimeSlot("2024-03-20", "10:00", "11:00")))
                 .and().user_clicks_plus_button();
         then().user_should_see_step2_form()
                 .and().step2_form_should_have_plus_button()
@@ -404,13 +401,13 @@ class WhenWoodleViewMvcAction extends Stage<WhenWoodleViewMvcAction> {
     }
 
     public WhenWoodleViewMvcAction user_sets_input_fields_on_schedule_event_step2_and_clicks_next(
-            Map<Integer, de.bas.bodo.woodle.adapter.web.TimeSlot> timeSlots) throws Exception {
+            Map<Integer, TestTimeSlot> timeSlots) throws Exception {
         log.info("Setting input fields on schedule event step2 and submitting with {} time slots", timeSlots.size());
         MockHttpServletRequestBuilder requestBuilder = post("/schedule-event-step2").session(session);
 
-        for (Map.Entry<Integer, de.bas.bodo.woodle.adapter.web.TimeSlot> entry : timeSlots.entrySet()) {
+        for (Map.Entry<Integer, TestTimeSlot> entry : timeSlots.entrySet()) {
             int index = entry.getKey();
-            de.bas.bodo.woodle.adapter.web.TimeSlot slot = entry.getValue();
+            TestTimeSlot slot = entry.getValue();
             requestBuilder
                     .param("date" + index, slot.date())
                     .param("startTime" + index, slot.startTime())
@@ -422,8 +419,8 @@ class WhenWoodleViewMvcAction extends Stage<WhenWoodleViewMvcAction> {
     }
 
     public WhenWoodleViewMvcAction user_sets_input_fields_on_schedule_event_step2_and_clicks_next() throws Exception {
-        Map<Integer, de.bas.bodo.woodle.adapter.web.TimeSlot> defaultTimeSlots = Map.of(
-                0, new de.bas.bodo.woodle.adapter.web.TimeSlot("2024-03-20", "10:00", "11:00"));
+        Map<Integer, TestTimeSlot> defaultTimeSlots = Map.of(
+                0, new TestTimeSlot("2024-03-20", "10:00", "11:00"));
         return user_sets_input_fields_on_schedule_event_step2_and_clicks_next(defaultTimeSlots);
     }
 
@@ -584,7 +581,8 @@ class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
     }
 
     public ThenWoodleViewMvcOutcome user_should_see_step2_form_with_previous_data() throws Exception {
-        return step2_form_should_show_previous_data(List.of(new TimeSlot("2024-03-20", "10:00", "11:00")));
+        return step2_form_should_show_previous_data(
+                Map.of(0, new TestTimeSlot("2024-03-20", "10:00", "11:00")));
     }
 
     public ThenWoodleViewMvcOutcome user_should_see_summary_page() throws Exception {
@@ -646,18 +644,19 @@ class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
     }
 
     public ThenWoodleViewMvcOutcome step2_form_should_show_previous_data(
-            List<de.bas.bodo.woodle.adapter.web.TimeSlot> expectedTimeSlots)
+            Map<Integer, TestTimeSlot> expectedTimeSlots)
             throws Exception {
         log.info("Verifying step2 form with previous data");
         MvcResult result = resultAction.andReturn();
         String content = result.getResponse().getContentAsString();
         Document doc = Jsoup.parse(content);
 
-        for (int i = 0; i < expectedTimeSlots.size(); i++) {
-            de.bas.bodo.woodle.adapter.web.TimeSlot expectedSlot = expectedTimeSlots.get(i);
-            Element dateInput = doc.select("input[data-test='date-" + i + "']").first();
-            Element startTimeInput = doc.select("input[data-test='startTime-" + i + "']").first();
-            Element endTimeInput = doc.select("input[data-test='endTime-" + i + "']").first();
+        for (Map.Entry<Integer, TestTimeSlot> entry : expectedTimeSlots.entrySet()) {
+            int index = entry.getKey();
+            TestTimeSlot expectedSlot = entry.getValue();
+            Element dateInput = doc.select("input[data-test='date-" + index + "']").first();
+            Element startTimeInput = doc.select("input[data-test='startTime-" + index + "']").first();
+            Element endTimeInput = doc.select("input[data-test='endTime-" + index + "']").first();
 
             assertThat(dateInput.attr("value")).isEqualTo(expectedSlot.date());
             assertThat(startTimeInput.attr("value")).isEqualTo(expectedSlot.startTime());
@@ -713,7 +712,7 @@ class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
 
     public ThenWoodleViewMvcOutcome step2_form_should_show_previous_data() throws Exception {
         return step2_form_should_show_previous_data(
-                List.of(new de.bas.bodo.woodle.adapter.web.TimeSlot("2024-03-20", "10:00", "11:00")));
+                Map.of(0, new TestTimeSlot("2024-03-20", "10:00", "11:00")));
     }
 
     public ThenWoodleViewMvcOutcome step2_form_should_have_additional_time_slot_fields() throws Exception {

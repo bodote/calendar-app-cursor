@@ -14,7 +14,4 @@ public record ScheduleEventStep2Form(List<TimeSlot> timeSlots) {
         this(new ArrayList<>());
         timeSlots.add(new TimeSlot(date, startTime, endTime));
     }
-
-    public record TimeSlot(String date, String startTime, String endTime) {
-    }
 }
