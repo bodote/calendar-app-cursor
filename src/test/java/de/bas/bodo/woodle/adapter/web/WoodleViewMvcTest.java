@@ -2,6 +2,7 @@ package de.bas.bodo.woodle.adapter.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -324,9 +325,11 @@ class WoodleViewMvcTest
     void should_allow_multiple_participants_to_save_selections() throws Exception {
         String testUuid = "123e4567-e89b-12d3-a456-426614174003";
         given().mock_mvc_is_configured(mockMvc)
+                .and().object_mapper_is_configured(objectMapper)
                 .and().s3_client_is_configured(s3Client)
                 .and().s3_client_returns_three_test_events_for_uuid(testUuid);
-        when().user_accesses_event_url_without_session(testUuid)
+        when().object_mapper_is_configured(objectMapper)
+                .and().user_accesses_event_url_without_session(testUuid)
                 .and().user_saves_participant_with_selections("Alice", testUuid, Map.of(
                         0, true, // 2024-03-15 09:00-10:00
                         1, false, // 2024-03-15 14:00-15:00
@@ -565,9 +568,19 @@ class WhenWoodleViewMvcAction extends Stage<WhenWoodleViewMvcAction> {
     private String currentPage;
     @ScenarioState
     private String eventUrl;
+    @ScenarioState
+    private ObjectMapper objectMapper;
 
     @ScenarioState
     private ArgumentCaptor<RequestBody> s3RequestBodyCaptor;
+
+    // Track the current poll data state for multiple participant saves
+    private String currentPollDataJson;
+
+    public WhenWoodleViewMvcAction object_mapper_is_configured(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+        return self();
+    }
 
     private void addToHistory(String page) {
         log.info("Adding to history - Current page: {}, New page: {}, History size: {}",
@@ -751,17 +764,20 @@ class WhenWoodleViewMvcAction extends Stage<WhenWoodleViewMvcAction> {
         resultAction.andExpect(status().isFound())
                 .andExpect(redirectedUrl("/event/" + eventUuid));
 
-        // Capture what was saved to S3 to update our mock
+        // Capture what was saved to S3 to track the updated state
         ArgumentCaptor<RequestBody> requestBodyCaptor = ArgumentCaptor.forClass(RequestBody.class);
-        verify(s3Client).putObject(any(PutObjectRequest.class), requestBodyCaptor.capture());
+        verify(s3Client, atLeastOnce()).putObject(any(PutObjectRequest.class), requestBodyCaptor.capture());
 
-        // Update the S3 mock to return the newly saved data for subsequent GET requests
+        // Get the most recently saved data
         RequestBody capturedBody = requestBodyCaptor.getValue();
+        currentPollDataJson = new String(capturedBody.contentStreamProvider().newStream().readAllBytes());
+
+        // Update the S3 mock to return the current state for subsequent GET requests
         GetObjectResponse getResponse = GetObjectResponse.builder().build();
-        doReturn(new ResponseInputStream<>(
-                getResponse,
-                new ByteArrayInputStream(capturedBody.contentStreamProvider().newStream().readAllBytes())))
-                .when(s3Client).getObject(any(GetObjectRequest.class));
+        org.mockito.Mockito.when(s3Client.getObject(any(GetObjectRequest.class)))
+                .thenAnswer(invocation -> new ResponseInputStream<>(
+                        getResponse,
+                        new ByteArrayInputStream(currentPollDataJson.getBytes())));
 
         // Follow the redirect to get the updated page content (like a real browser
         // would)
@@ -1275,7 +1291,8 @@ class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
     public ThenWoodleViewMvcOutcome participant_selection_should_be_saved_to_poll() throws Exception {
         log.info("Verifying that participant selection was saved to poll");
         // Verify that the S3 putObject was called to save the updated poll data
-        verify(s3Client).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+        // (could be multiple times for multiple participants)
+        verify(s3Client, atLeastOnce()).putObject(any(PutObjectRequest.class), any(RequestBody.class));
         return self();
     }
 
