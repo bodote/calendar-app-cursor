@@ -126,11 +126,24 @@
             <h2>Proposed Event Times</h2>
             <table data-test="events-table" class="events-table">
                 <thead>
+                    <%-- First header row: participant header and date headers with colspan --%>
                     <tr>
-                        <th data-test="participant-header">Participant</th>
+                        <th data-test="participant-header" rowspan="2">Participant</th>
+                        <%-- Group time slots by date to calculate colspan --%>
+                        !{var dateGroups = new java.util.LinkedHashMap<String, java.util.List<de.bas.bodo.woodle.view.TimeSlot>>();}
+                        @for(var timeSlot : step2FormData.timeSlots())
+                            !{dateGroups.computeIfAbsent(timeSlot.date(), k -> new java.util.ArrayList<>()).add(timeSlot);}
+                        @endfor
+                        
+                        @for(var dateEntry : dateGroups.entrySet())
+                            <th data-test-date="${dateEntry.getKey()}" colspan="${dateEntry.getValue().size()}">${dateEntry.getKey()}</th>
+                        @endfor
+                    </tr>
+                    <%-- Second header row: time slot headers only --%>
+                    <tr>
                         @for(var timeSlot : step2FormData.timeSlots())
                         <th data-test-time data-test-date="${timeSlot.date()}" data-test-start-time="${timeSlot.startTime()}" data-test-end-time="${timeSlot.endTime()}">
-                            ${timeSlot.date()}<br/>${timeSlot.startTime()} - ${timeSlot.endTime()}
+                            ${timeSlot.startTime()} - ${timeSlot.endTime()}
                         </th>
                         @endfor
                     </tr>

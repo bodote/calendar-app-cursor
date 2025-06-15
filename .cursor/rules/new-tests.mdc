@@ -3,4 +3,4 @@ description: creating new tests that include some test of html elements
 globs: 
 alwaysApply: false
 ---
-remember to facilitate easy access to html elements for tests use the `data-test-*` tag. Therefore the tests should access html elements, such as html-table elements primarily with those `data-test-*` tags
+* remember to facilitate easy access to html elements for tests use the `data-test-*` tag. Therefore the tests should access html elements, such as html-table elements primarily with those `data-test-*` tags

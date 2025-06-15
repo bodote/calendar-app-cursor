@@ -378,16 +378,18 @@ class ThenWoodleOutcome extends Stage<ThenWoodleOutcome> {
                                                 + description + ")")
                                 .size()).isEqualTo(1);
 
-                // Check Event Details section
-                assertThat(doc.select(
-                                "div[data-test-section='event-details'] div[data-test-item='date']:contains(2024-03-20)")
-                                .size()).isEqualTo(1);
-                assertThat(doc.select(
-                                "div[data-test-section='event-details'] div[data-test-item='time']:contains(10:00)")
-                                .size()).isEqualTo(1);
-                assertThat(doc.select(
-                                "div[data-test-section='event-details'] div[data-test-item='time']:contains(11:00)")
-                                .size()).isEqualTo(1);
+                // Check that events are now in the table (requirement 9) - no longer in
+                // event-details section
+                Elements eventsTable = doc.select("table[data-test='events-table']");
+                assertThat(eventsTable.size()).isEqualTo(1);
+
+                // Check that event time data is in the table headers
+                assertThat(doc.select("table[data-test='events-table'] thead tr th[data-test-date='2024-03-20']")
+                                .size()).isGreaterThan(0);
+                assertThat(doc.select("table[data-test='events-table'] thead tr th[data-test-start-time='10:00']")
+                                .size()).isGreaterThan(0);
+                assertThat(doc.select("table[data-test='events-table'] thead tr th[data-test-end-time='11:00']").size())
+                                .isGreaterThan(0);
 
                 // Check Organizer Details section
                 assertThat(doc.select("div[data-test-section='organizer-details'] div[data-test-item='name']:contains("
@@ -395,9 +397,9 @@ class ThenWoodleOutcome extends Stage<ThenWoodleOutcome> {
                 assertThat(doc.select("div[data-test-section='organizer-details'] div[data-test-item='email']:contains("
                                 + email + ")").size()).isEqualTo(1);
 
-                // Check Expiry Date
+                // Check Expiry Date (moved to poll-details section)
                 assertThat(doc.select(
-                                "div[data-test-section='event-details'] div[data-test-item='expiry-date'] span:not(.summary-label):contains(2024-06-20)")
+                                "div[data-test-section='poll-details'] div[data-test-item='expiry-date'] span:contains(2024-06-20)")
                                 .size()).isEqualTo(1);
                 return self();
         }

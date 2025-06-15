@@ -955,13 +955,48 @@ class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
         String content = result.getResponse().getContentAsString();
         Document doc = Jsoup.parse(content);
 
-        // Check for table headers
-        Elements tableHeaders = doc.select("table[data-test='events-table'] thead tr th");
-        assertThat(tableHeaders.size()).isGreaterThanOrEqualTo(1);
+        // Check that we have 2 header rows
+        Elements headerRows = doc.select("table[data-test='events-table'] thead tr");
+        assertThat(headerRows.size()).isEqualTo(2);
+
+        // First header row: dates with proper colspan
+        Element firstHeaderRow = headerRows.get(0);
+        Elements firstRowHeaders = firstHeaderRow.select("th");
 
         // First column should be for participant names
-        Element firstHeader = tableHeaders.first();
-        assertThat(firstHeader.attr("data-test")).isEqualTo("participant-header");
+        Element participantHeader = firstRowHeaders.get(0);
+        assertThat(participantHeader.attr("data-test")).isEqualTo("participant-header");
+        assertThat(participantHeader.attr("rowspan")).isEqualTo("2"); // Should span both header rows
+
+        // Date headers with proper colspan
+        Element date1Header = firstRowHeaders.get(1);
+        assertThat(date1Header.attr("data-test-date")).isEqualTo("2024-03-15");
+        assertThat(date1Header.attr("colspan")).isEqualTo("2"); // Should span 2 columns (2 time slots)
+
+        Element date2Header = firstRowHeaders.get(2);
+        assertThat(date2Header.attr("data-test-date")).isEqualTo("2024-03-18");
+        assertThat(date2Header.attr("colspan")).isEqualTo("1"); // Should span 1 column (1 time slot)
+
+        // Second header row: time slots
+        Element secondHeaderRow = headerRows.get(1);
+        Elements secondRowHeaders = secondHeaderRow.select("th");
+        assertThat(secondRowHeaders.size()).isEqualTo(3); // 3 time slot columns (no participant column as it's rowspan)
+
+        // Time slot headers in chronological order
+        Element timeSlot1Header = secondRowHeaders.get(0);
+        assertThat(timeSlot1Header.attr("data-test-date")).isEqualTo("2024-03-15");
+        assertThat(timeSlot1Header.attr("data-test-start-time")).isEqualTo("09:00:00");
+        assertThat(timeSlot1Header.attr("data-test-end-time")).isEqualTo("10:00:00");
+
+        Element timeSlot2Header = secondRowHeaders.get(1);
+        assertThat(timeSlot2Header.attr("data-test-date")).isEqualTo("2024-03-15");
+        assertThat(timeSlot2Header.attr("data-test-start-time")).isEqualTo("14:00:00");
+        assertThat(timeSlot2Header.attr("data-test-end-time")).isEqualTo("15:00:00");
+
+        Element timeSlot3Header = secondRowHeaders.get(2);
+        assertThat(timeSlot3Header.attr("data-test-date")).isEqualTo("2024-03-18");
+        assertThat(timeSlot3Header.attr("data-test-start-time")).isEqualTo("11:00:00");
+        assertThat(timeSlot3Header.attr("data-test-end-time")).isEqualTo("12:00:00");
 
         return self();
     }
@@ -972,25 +1007,22 @@ class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
         Document doc = Jsoup.parse(content);
 
         // Check that dates are grouped - same dates should appear next to each other
-        Elements dateHeaders = doc.select("table[data-test='events-table'] thead tr th[data-test-date]");
+        // Only look at the first header row for date grouping
+        Elements dateHeaders = doc.select("table[data-test='events-table'] thead tr:first-child th[data-test-date]");
 
-        // We should have date headers for both 2024-03-15 (twice) and 2024-03-18 (once)
-        // But dates should be grouped so 2024-03-15 headers come together
-        String previousDate = null;
-        boolean foundSecondDate = false;
+        // We should have date headers for both 2024-03-15 and 2024-03-18 in the first
+        // row
+        // The dates should be grouped properly (all 2024-03-15 together, then
+        // 2024-03-18)
+        assertThat(dateHeaders.size()).isEqualTo(2); // Should have exactly 2 date headers in first row
 
-        for (Element header : dateHeaders) {
-            String currentDate = header.attr("data-test-date");
-            if (previousDate != null && !previousDate.equals(currentDate)) {
-                if (foundSecondDate && currentDate.equals("2024-03-15")) {
-                    // If we already found a second date and we're back to 2024-03-15,
-                    // then the dates are not grouped properly
-                    org.junit.jupiter.api.Assertions.fail("Dates are not properly grouped together");
-                }
-                foundSecondDate = true;
-            }
-            previousDate = currentDate;
-        }
+        Element firstDateHeader = dateHeaders.get(0);
+        assertThat(firstDateHeader.attr("data-test-date")).isEqualTo("2024-03-15");
+        assertThat(firstDateHeader.attr("colspan")).isEqualTo("2"); // Should span 2 time slots
+
+        Element secondDateHeader = dateHeaders.get(1);
+        assertThat(secondDateHeader.attr("data-test-date")).isEqualTo("2024-03-18");
+        assertThat(secondDateHeader.attr("colspan")).isEqualTo("1"); // Should span 1 time slot
 
         return self();
     }

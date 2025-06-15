@@ -9,6 +9,8 @@
  * the table should look like this: ![proposed events table](StimmabgabeTabelle.png)
  * the test should test that the event details are in a table, that the table has column headers an that the dates and timespans of all entered events are ordered from left to right
  * once the table works the still existing  Event Details on the summary page that is NOT in the table should be removed. 
+ * there should be 2 header rows: the first one contains the dates and the second the time. if there are more than one timeslots on the same date then the header cell with the date should span over all the time columns in the 2nd header row that have the same date. the date therefore shows up only once for all timeslots on the same date.
+
   
 # hints 
 * this new test should NOT test all the previous steps , instead just make up a list of 3 events, 2 events on the same date but 2 different time values and one other date with a time , inject these into the `@MockBean
