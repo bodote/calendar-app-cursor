@@ -106,14 +106,9 @@
     <script>
         function addTimeSlot() {
             const form = document.querySelector('form');
-            const date = form.querySelector('input[name="date0"]').value;
-            const startTime = form.querySelector('input[name="startTime0"]').value;
-            const endTime = form.querySelector('input[name="endTime0"]').value;
-
-            const formData = new FormData();
-            formData.append('date', date);
-            formData.append('startTime', startTime);
-            formData.append('endTime', endTime);
+            
+            // Collect ALL form data, not just the first time slot
+            const formData = new FormData(form);
 
             fetch('/schedule-event-step2/add-time-slot', {
                 method: 'POST',

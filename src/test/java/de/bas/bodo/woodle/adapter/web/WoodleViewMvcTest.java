@@ -251,12 +251,14 @@ class WoodleViewMvcTest
                 .and().user_sets_input_fields_on_schedule_event_page_and_clicks_next()
                 .and().user_sets_input_fields_on_schedule_event_step2_and_clicks_next(Map.of(
                         0, new TimeSlot("2024-03-20", "10:00", "11:00"),
-                        1, new TimeSlot("2024-03-21", "14:00", "15:00")))
+                        1, new TimeSlot("2024-03-21", "14:00", "15:00"),
+                        2, new TimeSlot("2024-03-22", "16:00", "17:00")))
                 .and().user_sets_input_fields_on_schedule_event_step3_and_clicks_next();
         then().user_should_see_summary_page()
                 .and().summary_page_should_show_all_entered_data(Map.of(
                         0, new TimeSlot("2024-03-20", "10:00", "11:00"),
-                        1, new TimeSlot("2024-03-21", "14:00", "15:00")));
+                        1, new TimeSlot("2024-03-21", "14:00", "15:00"),
+                        2, new TimeSlot("2024-03-22", "16:00", "17:00")));
     }
 
     @Test
@@ -293,6 +295,134 @@ class WoodleViewMvcTest
                 .and().events_table_should_group_dates_together()
                 .and().events_table_should_order_dates_and_times_correctly()
                 .and().events_table_should_have_empty_name_input_field();
+    }
+
+    @Test
+    @DisplayName("Should save participant name and time slot selections when save button is clicked")
+    void should_save_participant_selections_when_save_button_clicked() throws Exception {
+        String testUuid = "123e4567-e89b-12d3-a456-426614174002";
+        given().mock_mvc_is_configured(mockMvc)
+                .and().s3_client_is_configured(s3Client)
+                .and().s3_client_returns_three_test_events_for_uuid(testUuid);
+        when().user_accesses_event_url_without_session(testUuid)
+                .and().user_saves_participant_with_selections("Alice", testUuid, Map.of(
+                        0, true, // 2024-03-15 09:00-10:00
+                        1, false, // 2024-03-15 14:00-15:00
+                        2, true // 2024-03-18 11:00-12:00
+                ));
+        then().participant_selection_should_be_saved_to_poll()
+                .and().events_table_should_show_fixed_participant_row("Alice", Map.of(
+                        0, true,
+                        1, false,
+                        2, true))
+                .and().events_table_should_have_new_empty_participant_row()
+                .and().save_button_should_be_present();
+    }
+
+    @Test
+    @DisplayName("Should allow multiple participants to save their selections and create multiple fixed rows")
+    void should_allow_multiple_participants_to_save_selections() throws Exception {
+        String testUuid = "123e4567-e89b-12d3-a456-426614174003";
+        given().mock_mvc_is_configured(mockMvc)
+                .and().s3_client_is_configured(s3Client)
+                .and().s3_client_returns_three_test_events_for_uuid(testUuid);
+        when().user_accesses_event_url_without_session(testUuid)
+                .and().user_saves_participant_with_selections("Alice", testUuid, Map.of(
+                        0, true, // 2024-03-15 09:00-10:00
+                        1, false, // 2024-03-15 14:00-15:00
+                        2, true // 2024-03-18 11:00-12:00
+                ))
+                .and().user_saves_participant_with_selections("Bob", testUuid, Map.of(
+                        0, false, // 2024-03-15 09:00-10:00
+                        1, true, // 2024-03-15 14:00-15:00
+                        2, false // 2024-03-18 11:00-12:00
+                ));
+        then().participant_selection_should_be_saved_to_poll()
+                .and().events_table_should_show_multiple_fixed_participant_rows(Map.of(
+                        "Alice", Map.of(0, true, 1, false, 2, true),
+                        "Bob", Map.of(0, false, 1, true, 2, false)))
+                .and().events_table_should_have_new_empty_participant_row()
+                .and().save_button_should_be_present();
+    }
+
+    @Test
+    @DisplayName("Should allow adding 3 time slots step by step using plus button")
+    void should_allow_adding_three_time_slots_step_by_step() throws Exception {
+        given().mock_mvc_is_configured(mockMvc)
+                .and().user_is_on_homepage()
+                .and().user_has_test_data(TEST_NAME, TEST_EMAIL, TEST_TITLE, TEST_DESCRIPTION);
+        when().user_clicks_schedule_event_button()
+                .and().user_sets_input_fields_on_schedule_event_page_and_clicks_next()
+                // Start with 1 time slot
+                .and().user_sets_input_fields_on_schedule_event_step2_and_clicks_next(Map.of(
+                        0, new TimeSlot("2024-03-20", "10:00", "11:00")))
+                .and().user_clicks_plus_button();
+        then().user_should_see_step2_form()
+                .and().step2_form_should_have_plus_button()
+                .and().step2_form_should_show_previous_data(Map.of(
+                        0, new TimeSlot("2024-03-20", "10:00", "11:00")))
+                .and().step2_form_should_have_additional_time_slot_fields()
+                .and().step2_form_should_have_empty_slot(1);
+        // Add second time slot
+        when().user_sets_input_fields_on_schedule_event_step2_and_clicks_next(Map.of(
+                0, new TimeSlot("2024-03-20", "10:00", "11:00"),
+                1, new TimeSlot("2024-03-21", "14:00", "15:00")))
+                .and().user_clicks_plus_button();
+        then().user_should_see_step2_form()
+                .and().step2_form_should_have_plus_button()
+                .and().step2_form_should_show_previous_data(Map.of(
+                        0, new TimeSlot("2024-03-20", "10:00", "11:00"),
+                        1, new TimeSlot("2024-03-21", "14:00", "15:00")))
+                .and().step2_form_should_have_three_time_slots()
+                .and().step2_form_should_have_empty_slot(2);
+        // Add third time slot
+        when().user_sets_input_fields_on_schedule_event_step2_and_clicks_next(Map.of(
+                0, new TimeSlot("2024-03-20", "10:00", "11:00"),
+                1, new TimeSlot("2024-03-21", "14:00", "15:00"),
+                2, new TimeSlot("2024-03-22", "16:00", "17:00")))
+                .and().user_clicks_plus_button();
+        then().user_should_see_step2_form()
+                .and().step2_form_should_have_plus_button()
+                .and().step2_form_should_show_previous_data(Map.of(
+                        0, new TimeSlot("2024-03-20", "10:00", "11:00"),
+                        1, new TimeSlot("2024-03-21", "14:00", "15:00"),
+                        2, new TimeSlot("2024-03-22", "16:00", "17:00")))
+                .and().step2_form_should_have_four_time_slots()
+                .and().step2_form_should_have_empty_slot(3);
+    }
+
+    @Test
+    @DisplayName("Should add a new empty row after saving a participant - verifying AC3 properly")
+    void should_add_new_empty_row_after_saving_participant() throws Exception {
+        String testUuid = "123e4567-e89b-12d3-a456-426614174004";
+
+        given().mock_mvc_is_configured(mockMvc)
+                .and().s3_client_is_configured(s3Client)
+                .and().s3_client_returns_three_test_events_for_uuid(testUuid);
+
+        when().user_accesses_event_url_without_session(testUuid)
+                .and().user_saves_participant_with_selections("Alice", testUuid, Map.of(
+                        0, true, // 2024-03-15 09:00-10:00
+                        1, false // 2024-03-15 14:00-15:00
+                ));
+
+        then().events_table_should_have_exactly_two_participant_rows()
+                .and().events_table_should_show_fixed_participant_row("Alice", Map.of(0, true, 1, false))
+                .and().events_table_should_have_new_empty_participant_row();
+    }
+
+    @Test
+    @DisplayName("Form action URL should be correct - should point to /event/{uuid}/participants/save")
+    void form_action_should_be_correct() throws Exception {
+        String testUuid = "test-uuid-123";
+
+        given().mock_mvc_is_configured(mockMvc)
+                .and().s3_client_is_configured(s3Client)
+                .and().s3_client_returns_three_test_events_for_uuid(testUuid);
+
+        when().user_accesses_event_url_without_session(testUuid);
+
+        then().form_action_should_point_to_correct_participants_save_url(testUuid);
     }
 }
 
@@ -392,7 +522,7 @@ class GivenWoodleViewMvcState extends Stage<GivenWoodleViewMvcState> {
             String description,
             List<PollData.EventTimeSlot> timeSlots,
             LocalDate expiryDate) throws Exception {
-        PollData testEvent = new PollData(name, email, title, description, timeSlots, expiryDate);
+        PollData testEvent = new PollData(name, email, title, description, timeSlots, expiryDate, List.of());
         return s3_client_returns_poll_data_for_uuid(uuid, testEvent);
     }
 
@@ -400,10 +530,12 @@ class GivenWoodleViewMvcState extends Stage<GivenWoodleViewMvcState> {
             throws Exception {
         String jsonData = objectMapper.writeValueAsString(pollData);
         GetObjectResponse response = GetObjectResponse.builder().build();
-        ResponseInputStream<GetObjectResponse> responseStream = new ResponseInputStream<>(
-                response,
-                new ByteArrayInputStream(jsonData.getBytes()));
-        doReturn(responseStream).when(s3Client).getObject(any(GetObjectRequest.class));
+
+        // Use thenAnswer to return a fresh stream on each call
+        org.mockito.Mockito.when(s3Client.getObject(any(GetObjectRequest.class)))
+                .thenAnswer(invocation -> new ResponseInputStream<>(
+                        response,
+                        new ByteArrayInputStream(jsonData.getBytes())));
         return self();
     }
 }
@@ -592,6 +724,51 @@ class WhenWoodleViewMvcAction extends Stage<WhenWoodleViewMvcAction> {
 
         // 4. Access the URL in a new session
         resultAction = mockMvc.perform(get(this.eventUrl));
+        return self();
+    }
+
+    public WhenWoodleViewMvcAction user_saves_participant_with_selections(String participantName, String eventUuid,
+            Map<Integer, Boolean> timeSlots) throws Exception {
+        log.info("Saving participant {} with time slot selections: {} for event {}", participantName, timeSlots,
+                eventUuid);
+
+        // Create the request to save participant with name and selected time slots
+        MockHttpServletRequestBuilder requestBuilder = post("/event/" + eventUuid + "/participants/save")
+                .param("participantName", participantName);
+
+        // Add selected time slots as parameters
+        for (Map.Entry<Integer, Boolean> entry : timeSlots.entrySet()) {
+            int slotIndex = entry.getKey();
+            boolean selected = entry.getValue();
+            if (selected) {
+                requestBuilder.param("selectedSlots", String.valueOf(slotIndex));
+            }
+        }
+
+        resultAction = mockMvc.perform(requestBuilder);
+
+        // Verify that the save action redirects to the correct event page
+        resultAction.andExpect(status().isFound())
+                .andExpect(redirectedUrl("/event/" + eventUuid));
+
+        // Capture what was saved to S3 to update our mock
+        ArgumentCaptor<RequestBody> requestBodyCaptor = ArgumentCaptor.forClass(RequestBody.class);
+        verify(s3Client).putObject(any(PutObjectRequest.class), requestBodyCaptor.capture());
+
+        // Update the S3 mock to return the newly saved data for subsequent GET requests
+        RequestBody capturedBody = requestBodyCaptor.getValue();
+        GetObjectResponse getResponse = GetObjectResponse.builder().build();
+        doReturn(new ResponseInputStream<>(
+                getResponse,
+                new ByteArrayInputStream(capturedBody.contentStreamProvider().newStream().readAllBytes())))
+                .when(s3Client).getObject(any(GetObjectRequest.class));
+
+        // Follow the redirect to get the updated page content (like a real browser
+        // would)
+        log.info("Following redirect to /event/{} after saving participant", eventUuid);
+        resultAction = mockMvc.perform(get("/event/" + eventUuid));
+        resultAction.andExpect(status().isOk());
+
         return self();
     }
 }
@@ -879,6 +1056,23 @@ class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
         return self();
     }
 
+    public ThenWoodleViewMvcOutcome step2_form_should_have_four_time_slots() throws Exception {
+        MvcResult result = resultAction.andReturn();
+        String content = result.getResponse().getContentAsString();
+        Document doc = Jsoup.parse(content);
+
+        // Check that we have four sets of date/time input fields
+        Elements dateInputs = doc.select("input[data-test^='date-']");
+        Elements startTimeInputs = doc.select("input[data-test^='startTime-']");
+        Elements endTimeInputs = doc.select("input[data-test^='endTime-']");
+
+        assertThat(dateInputs.size()).isEqualTo(4);
+        assertThat(startTimeInputs.size()).isEqualTo(4);
+        assertThat(endTimeInputs.size()).isEqualTo(4);
+
+        return self();
+    }
+
     public ThenWoodleViewMvcOutcome step2_form_should_show_previous_data() throws Exception {
         return step2_form_should_show_previous_data(
                 Map.of(0, new TimeSlot("2024-03-20", "10:00", "11:00")));
@@ -1074,6 +1268,160 @@ class ThenWoodleViewMvcOutcome extends Stage<ThenWoodleViewMvcOutcome> {
         Element nameInput = nameInputs.first();
         assertThat(nameInput.attr("value")).isEmpty();
         assertThat(nameInput.attr("type")).isEqualTo("text");
+
+        return self();
+    }
+
+    public ThenWoodleViewMvcOutcome participant_selection_should_be_saved_to_poll() throws Exception {
+        log.info("Verifying that participant selection was saved to poll");
+        // Verify that the S3 putObject was called to save the updated poll data
+        verify(s3Client).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+        return self();
+    }
+
+    public ThenWoodleViewMvcOutcome events_table_should_show_fixed_participant_row(String participantName,
+            Map<Integer, Boolean> timeSlots) throws Exception {
+        log.info("Verifying fixed participant row for: {}", participantName);
+        Document doc = getDocumentFromResult();
+
+        // Check that the participant name is displayed as read-only text (not an input
+        // field)
+        Elements participantNameCells = doc
+                .select("table[data-test='events-table'] tbody tr td[data-test-participant='" + participantName + "']");
+        assertThat(participantNameCells.size()).isEqualTo(1);
+        assertThat(participantNameCells.text()).isEqualTo(participantName);
+
+        // Check that the time slot selections are displayed as read-only checkboxes
+        // (disabled)
+        for (Map.Entry<Integer, Boolean> entry : timeSlots.entrySet()) {
+            int slotIndex = entry.getKey();
+            boolean selected = entry.getValue();
+
+            Elements checkboxes = doc.select("table[data-test='events-table'] tbody tr td:nth-child(" + (slotIndex + 2)
+                    + ") input[type='checkbox'][disabled]");
+            assertThat(checkboxes.size()).isEqualTo(1);
+
+            Element checkbox = checkboxes.first();
+            if (selected) {
+                assertThat(checkbox.hasAttr("checked")).isTrue();
+            } else {
+                assertThat(checkbox.hasAttr("checked")).isFalse();
+            }
+        }
+
+        return self();
+    }
+
+    public ThenWoodleViewMvcOutcome events_table_should_have_new_empty_participant_row() throws Exception {
+        log.info("Verifying new empty participant row exists");
+        Document doc = getDocumentFromResult();
+
+        // Check that there's an input field for a new participant name
+        Elements newParticipantInputs = doc.select(
+                "table[data-test='events-table'] tbody tr:last-child td input[data-test='participant-name'][type='text']");
+        assertThat(newParticipantInputs.size()).isEqualTo(1);
+        assertThat(newParticipantInputs.first().attr("value")).isEmpty();
+
+        // Check that there are unchecked checkboxes for the new participant row
+        Elements newParticipantCheckboxes = doc.select(
+                "table[data-test='events-table'] tbody tr:last-child td input[type='checkbox']:not([disabled])");
+        assertThat(newParticipantCheckboxes.size()).isGreaterThan(0);
+
+        for (Element checkbox : newParticipantCheckboxes) {
+            assertThat(checkbox.hasAttr("checked")).isFalse();
+        }
+
+        return self();
+    }
+
+    public ThenWoodleViewMvcOutcome save_button_should_be_present() throws Exception {
+        log.info("Verifying save button is present");
+        Document doc = getDocumentFromResult();
+
+        Elements saveButtons = doc.select("button[data-test='save-participant-button']");
+        assertThat(saveButtons.size()).isEqualTo(1);
+        assertThat(saveButtons.text()).containsIgnoringCase("save");
+
+        return self();
+    }
+
+    public ThenWoodleViewMvcOutcome events_table_should_show_multiple_fixed_participant_rows(
+            Map<String, Map<Integer, Boolean>> participantsAndTimeSlots) throws Exception {
+        log.info("Verifying multiple fixed participant rows for: {}", participantsAndTimeSlots.keySet());
+        Document doc = getDocumentFromResult();
+
+        // Check that all participants are displayed as fixed rows
+        for (Map.Entry<String, Map<Integer, Boolean>> participantEntry : participantsAndTimeSlots.entrySet()) {
+            String participantName = participantEntry.getKey();
+            Map<Integer, Boolean> timeSlots = participantEntry.getValue();
+
+            // Check that the participant name is displayed as read-only text (not an input
+            // field)
+            Elements participantNameCells = doc
+                    .select("table[data-test='events-table'] tbody tr td[data-test-participant='" + participantName
+                            + "']");
+            assertThat(participantNameCells.size()).isEqualTo(1);
+            assertThat(participantNameCells.text()).isEqualTo(participantName);
+
+            // Check that the time slot selections are displayed as read-only checkboxes
+            // (disabled)
+            for (Map.Entry<Integer, Boolean> timeSlotEntry : timeSlots.entrySet()) {
+                int slotIndex = timeSlotEntry.getKey();
+                boolean selected = timeSlotEntry.getValue();
+
+                // Find the row containing this participant
+                Element participantRow = participantNameCells.first().parent();
+                Elements checkboxes = participantRow
+                        .select("td:nth-child(" + (slotIndex + 2) + ") input[type='checkbox'][disabled]");
+                assertThat(checkboxes.size()).isEqualTo(1);
+
+                Element checkbox = checkboxes.first();
+                if (selected) {
+                    assertThat(checkbox.hasAttr("checked")).isTrue();
+                } else {
+                    assertThat(checkbox.hasAttr("checked")).isFalse();
+                }
+            }
+        }
+
+        return self();
+    }
+
+    public ThenWoodleViewMvcOutcome events_table_should_have_exactly_one_participant_row() throws Exception {
+        MvcResult result = resultAction.andReturn();
+        String content = result.getResponse().getContentAsString();
+        Document doc = Jsoup.parse(content);
+
+        // Check that there's exactly one participant row
+        Elements participantRows = doc.select("table[data-test='events-table'] tbody tr");
+        assertThat(participantRows.size()).isEqualTo(1);
+
+        return self();
+    }
+
+    public ThenWoodleViewMvcOutcome events_table_should_have_exactly_two_participant_rows() throws Exception {
+        log.info("Verifying that events table has exactly two participant rows");
+        Document doc = getDocumentFromResult();
+        Elements participantRows = doc.select("table[data-test='events-table'] tbody tr");
+        assertThat(participantRows.size()).isEqualTo(2);
+        return self();
+    }
+
+    public ThenWoodleViewMvcOutcome form_action_should_point_to_correct_participants_save_url(String testUuid)
+            throws Exception {
+        log.info("Verifying that form action URL is correct for UUID: {}", testUuid);
+        Document doc = getDocumentFromResult();
+
+        // Find the form that contains the participant save functionality
+        Elements form = doc.select("form[method='post']");
+        assertThat(form.size()).isEqualTo(1);
+
+        String formAction = form.attr("action");
+        log.info("Form action found: {}", formAction);
+
+        // The form action should be /event/{uuid}/participants/save
+        String expectedAction = "/event/" + testUuid + "/participants/save";
+        assertThat(formAction).isEqualTo(expectedAction);
 
         return self();
     }

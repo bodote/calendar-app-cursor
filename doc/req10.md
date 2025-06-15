@@ -10,4 +10,5 @@ on the summary page the users should be able to add a name in the Participant co
 # hints
 * add a new test method for this requirement
 * make use of the existing GivenWoodleViewMvcAction, WhenWoodleViewMvcAction and ThenWoodleViewMvcAction methods to avoid code duplication
+* you must not rely on HttpSession any more on the summary page, because all persistent data should be stored in and retrieved from the PollStorageService anyway.
   

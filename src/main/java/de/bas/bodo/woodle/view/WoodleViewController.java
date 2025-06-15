@@ -108,66 +108,57 @@ public class WoodleViewController {
 
     @PostMapping("/schedule-event-step2/add-time-slot")
     public ResponseEntity<String> addTimeSlot(
-            @RequestParam String date,
-            @RequestParam String startTime,
-            @RequestParam String endTime,
+            @RequestParam Map<String, String> allParams,
             Model model) {
-        log.debug("addTimeSlot called with date='{}', startTime='{}', endTime='{}'", date, startTime, endTime);
-        ScheduleEventStep2Form currentForm = (ScheduleEventStep2Form) model.getAttribute("step2FormData");
-        if (currentForm == null) {
-            log.debug("No current form, creating new with submitted values.");
-            currentForm = new ScheduleEventStep2Form(date, startTime, endTime);
-            log.debug("Initial timeSlots: {}", currentForm.timeSlots());
-        } else {
-            List<TimeSlot> timeSlots = new ArrayList<>(currentForm.timeSlots());
-            log.debug("Before adding: size={}, content={}", timeSlots.size(), timeSlots);
-            boolean submittedSlotIsEmpty = date.isEmpty() && startTime.isEmpty() && endTime.isEmpty();
-            log.debug("Submitted slot is empty: {}", submittedSlotIsEmpty);
+        log.debug("addTimeSlot called with parameters: {}", allParams);
 
-            // Check if the submitted data already exists in the list
-            boolean slotExists = timeSlots.stream()
-                    .anyMatch(slot -> date.equals(slot.date()) &&
-                            startTime.equals(slot.startTime()) &&
-                            endTime.equals(slot.endTime()));
-            log.debug("Submitted slot already exists in list: {}", slotExists);
+        // Collect all time slots from indexed parameters (new format)
+        List<TimeSlot> timeSlots = new ArrayList<>();
+        int index = 0;
 
-            if (!submittedSlotIsEmpty && !slotExists) {
-                if (timeSlots.isEmpty()) {
-                    log.debug("List is empty, adding submitted slot.");
-                    timeSlots.add(new TimeSlot(date, startTime, endTime));
-                } else {
-                    TimeSlot last = timeSlots.get(timeSlots.size() - 1);
-                    boolean lastIsEmpty = last.date().isEmpty() && last.startTime().isEmpty()
-                            && last.endTime().isEmpty();
-                    log.debug("Last slot: {} (empty={})", last, lastIsEmpty);
+        while (allParams.containsKey("date" + index)) {
+            String date = allParams.get("date" + index);
+            String startTime = allParams.get("startTime" + index);
+            String endTime = allParams.get("endTime" + index);
 
-                    if (lastIsEmpty) {
-                        log.debug("Last slot is empty, updating it with submitted values.");
-                        timeSlots.set(timeSlots.size() - 1,
-                                new TimeSlot(date, startTime, endTime));
-                    } else {
-                        log.debug("Last slot is not empty, adding new slot.");
-                        timeSlots.add(new TimeSlot(date, startTime, endTime));
-                    }
-                }
-            } else {
-                log.debug("Not adding slot: submitted slot is empty or already exists in list.");
+            // Add all time slots (including empty ones to preserve user input)
+            timeSlots.add(new TimeSlot(date, startTime, endTime));
+            index++;
+        }
+
+        log.debug("Collected {} time slots from indexed parameters: {}", timeSlots.size(), timeSlots);
+
+        // Fallback for old format (single date, startTime, endTime parameters) - for
+        // backwards compatibility with tests
+        if (timeSlots.isEmpty() && allParams.containsKey("date") && allParams.containsKey("startTime")
+                && allParams.containsKey("endTime")) {
+            log.debug("Using legacy parameter format for backwards compatibility");
+            ScheduleEventStep2Form currentForm = (ScheduleEventStep2Form) model.getAttribute("step2FormData");
+            if (currentForm != null) {
+                // Start with current time slots
+                timeSlots = new ArrayList<>(currentForm.timeSlots());
+                log.debug("Starting with current form data: {}", timeSlots);
             }
+        }
 
-            // Always ensure only one empty slot at the end
-            TimeSlot last = timeSlots.isEmpty() ? null : timeSlots.get(timeSlots.size() - 1);
-            boolean lastIsEmpty = last != null && last.date().isEmpty() && last.startTime().isEmpty()
-                    && last.endTime().isEmpty();
+        // Always ensure one empty slot at the end for new input
+        if (timeSlots.isEmpty()) {
+            log.debug("No time slots found, adding initial empty slot.");
+            timeSlots.add(new TimeSlot("", "", ""));
+        } else {
+            TimeSlot last = timeSlots.get(timeSlots.size() - 1);
+            boolean lastIsEmpty = last.date().isEmpty() && last.startTime().isEmpty() && last.endTime().isEmpty();
             if (!lastIsEmpty) {
-                log.debug("Ensuring one empty slot at the end.");
+                log.debug("Adding new empty slot at the end.");
                 timeSlots.add(new TimeSlot("", "", ""));
             } else {
-                log.debug("Last slot is already empty, not adding another.");
+                log.debug("Last slot is already empty.");
             }
-            log.debug("Final timeSlots before updating model: size={}, content={}", timeSlots.size(), timeSlots);
-            currentForm = new ScheduleEventStep2Form(timeSlots);
         }
-        model.addAttribute("step2FormData", currentForm);
+
+        log.debug("Final timeSlots before updating model: size={}, content={}", timeSlots.size(), timeSlots);
+        ScheduleEventStep2Form step2FormData = new ScheduleEventStep2Form(timeSlots);
+        model.addAttribute("step2FormData", step2FormData);
         return ResponseEntity.status(HttpStatus.SEE_OTHER)
                 .header("Location", "/schedule-event-step2")
                 .build();

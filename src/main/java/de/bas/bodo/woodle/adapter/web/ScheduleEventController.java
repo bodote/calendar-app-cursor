@@ -3,6 +3,8 @@ package de.bas.bodo.woodle.adapter.web;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -81,7 +83,8 @@ public class ScheduleEventController {
                 step1Form.title(),
                 step1Form.description(),
                 eventTimeSlots,
-                expiryDateParsed);
+                expiryDateParsed,
+                List.of()); // Initialize with empty participants list
 
         // Store poll data and get URL
         String pollUrl = pollStorageService.storePoll(pollData);
@@ -92,6 +95,7 @@ public class ScheduleEventController {
         model.addAttribute("step2FormData", step2Form);
         model.addAttribute("step3FormData", step3Form);
         model.addAttribute("pollUrl", pollUrl);
+        model.addAttribute("participants", List.of()); // Initialize with empty participants list for new polls
 
         // Keep session active to allow going back and modifying data
         return "event-summary";
@@ -112,6 +116,7 @@ public class ScheduleEventController {
         model.addAttribute("step2FormData", step2Form);
         model.addAttribute("step3FormData", step3Form);
         model.addAttribute("pollUrl", pollUrl);
+        model.addAttribute("participants", List.of()); // Initialize with empty participants list for new polls
 
         return "event-summary";
     }
@@ -172,7 +177,78 @@ public class ScheduleEventController {
         model.addAttribute("step2FormData", step2Form);
         model.addAttribute("step3FormData", step3Form);
         model.addAttribute("pollUrl", baseUrl + "/event/" + uuid);
+        model.addAttribute("participants", pollData.participants());
 
         return "event-summary";
+    }
+
+    @PostMapping("/event/{uuid}/participants/save")
+    public String saveParticipant(
+            @PathVariable String uuid,
+            @RequestParam String participantName,
+            @RequestParam(value = "selectedSlots", required = false) String[] selectedSlots,
+            Model model) throws Exception {
+
+        // Load existing poll data
+        String key = "polls/" + uuid + ".json";
+        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                .bucket(bucketName)
+                .key(key)
+                .build();
+
+        ResponseInputStream<GetObjectResponse> responseStream = s3Client.getObject(getObjectRequest);
+        String jsonData = new String(responseStream.readAllBytes());
+        PollData existingPollData = objectMapper.readValue(jsonData, PollData.class);
+
+        // Convert selected slots to integers
+        List<Integer> selectedSlotIndexes = new ArrayList<>();
+        if (selectedSlots != null) {
+            selectedSlotIndexes = Arrays.stream(selectedSlots)
+                    .map(Integer::parseInt)
+                    .toList();
+        }
+
+        // Create new participant
+        PollData.Participant newParticipant = new PollData.Participant(participantName, selectedSlotIndexes);
+
+        // Add participant to existing list
+        List<PollData.Participant> updatedParticipants = new ArrayList<>(existingPollData.participants());
+        updatedParticipants.add(newParticipant);
+
+        // Create updated poll data
+        PollData updatedPollData = new PollData(
+                existingPollData.name(),
+                existingPollData.email(),
+                existingPollData.title(),
+                existingPollData.description(),
+                existingPollData.timeSlots(),
+                existingPollData.expiryDate(),
+                updatedParticipants);
+
+        // Save updated poll data back to S3
+        pollStorageService.storePollWithUuid(uuid, updatedPollData);
+
+        // Convert updated PollData to form data for display
+        ScheduleEventStep1Form step1Form = new ScheduleEventStep1Form(
+                updatedPollData.name(),
+                updatedPollData.email(),
+                updatedPollData.title(),
+                updatedPollData.description());
+
+        List<TimeSlot> timeSlots = updatedPollData.timeSlots().stream()
+                .map(slot -> new TimeSlot(
+                        slot.date().format(DATE_FORMATTER),
+                        slot.startTime().format(TIME_FORMATTER),
+                        slot.endTime().format(TIME_FORMATTER)))
+                .toList();
+
+        ScheduleEventStep2Form step2Form = new ScheduleEventStep2Form(timeSlots);
+
+        ScheduleEventStep3Form step3Form = new ScheduleEventStep3Form(
+                updatedPollData.expiryDate().format(DATE_FORMATTER));
+
+        // Redirect to the event page to show the updated data
+        // This follows the Post-Redirect-Get pattern to prevent duplicate submissions
+        return "redirect:/event/" + uuid;
     }
 }

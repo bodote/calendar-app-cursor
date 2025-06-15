@@ -50,4 +50,21 @@ public class PollStorageService {
         // Generate and return the poll URL
         return baseUrl + "/event/" + pollId;
     }
+
+    public void storePollWithUuid(String pollId, PollData pollData) throws Exception {
+        String key = "polls/" + pollId + ".json";
+
+        // Convert poll data to JSON
+        String jsonData = objectMapper.writeValueAsString(pollData);
+
+        // Store in S3
+        PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                .bucket(bucketName)
+                .key(key)
+                .contentType("application/json")
+                .build();
+
+        s3Client.putObject(putObjectRequest, RequestBody.fromString(jsonData));
+        log.info("Updated poll data successfully stored in S3 with UUID: {}", pollId);
+    }
 }

@@ -10,8 +10,12 @@ public record PollData(
         String title,
         String description,
         List<EventTimeSlot> timeSlots,
-        LocalDate expiryDate) {
+        LocalDate expiryDate,
+        List<Participant> participants) {
 
     public record EventTimeSlot(LocalDate date, LocalTime startTime, LocalTime endTime) {
+    }
+
+    public record Participant(String name, List<Integer> selectedTimeSlotIndexes) {
     }
 }

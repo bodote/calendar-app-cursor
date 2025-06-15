@@ -2,6 +2,7 @@
 @param de.bas.bodo.woodle.view.ScheduleEventStep2Form step2FormData
 @param de.bas.bodo.woodle.view.ScheduleEventStep3Form step3FormData
 @param String pollUrl
+@param java.util.List<de.bas.bodo.woodle.domain.model.PollData.Participant> participants
 
 <!DOCTYPE html>
 <html>
@@ -120,47 +121,68 @@
             </div>
         </div>
 
-
-
         <div class="summary-section" data-test-section="proposed-events">
             <h2>Proposed Event Times</h2>
-            <table data-test="events-table" class="events-table">
-                <thead>
-                    <%-- First header row: participant header and date headers with colspan --%>
-                    <tr>
-                        <th data-test="participant-header" rowspan="2">Participant</th>
-                        <%-- Group time slots by date to calculate colspan --%>
-                        !{var dateGroups = new java.util.LinkedHashMap<String, java.util.List<de.bas.bodo.woodle.view.TimeSlot>>();}
-                        @for(var timeSlot : step2FormData.timeSlots())
-                            !{dateGroups.computeIfAbsent(timeSlot.date(), k -> new java.util.ArrayList<>()).add(timeSlot);}
+            
+            <form method="post" action="/event${pollUrl.substring(pollUrl.lastIndexOf('/'))}/participants/save">
+                <table data-test="events-table" class="events-table">
+                    <thead>
+                        <%-- First header row: participant header and date headers with colspan --%>
+                        <tr>
+                            <th data-test="participant-header" rowspan="2">Participant</th>
+                            <%-- Group time slots by date to calculate colspan --%>
+                            !{var dateGroups = new java.util.LinkedHashMap<String, java.util.List<de.bas.bodo.woodle.view.TimeSlot>>();}
+                            @for(var timeSlot : step2FormData.timeSlots())
+                                !{dateGroups.computeIfAbsent(timeSlot.date(), k -> new java.util.ArrayList<>()).add(timeSlot);}
+                            @endfor
+                            
+                            @for(var dateEntry : dateGroups.entrySet())
+                                <th data-test-date="${dateEntry.getKey()}" colspan="${dateEntry.getValue().size()}">${dateEntry.getKey()}</th>
+                            @endfor
+                        </tr>
+                        <%-- Second header row: time slot headers only --%>
+                        <tr>
+                            @for(var timeSlot : step2FormData.timeSlots())
+                            <th data-test-time data-test-date="${timeSlot.date()}" data-test-start-time="${timeSlot.startTime()}" data-test-end-time="${timeSlot.endTime()}">
+                                ${timeSlot.startTime()} - ${timeSlot.endTime()}
+                            </th>
+                            @endfor
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <%-- Display existing participants as fixed rows --%>
+                        @for(var participant : participants)
+                        <tr>
+                            <td data-test-participant="${participant.name()}">${participant.name()}</td>
+                            @for(int i = 0; i < step2FormData.timeSlots().size(); i++)
+                                !{boolean isSelected = participant.selectedTimeSlotIndexes().contains(i);}
+                                <td>
+                                    @if(isSelected)
+                                        <input type="checkbox" checked disabled />
+                                    @else
+                                        <input type="checkbox" disabled />
+                                    @endif
+                                </td>
+                            @endfor
+                        </tr>
                         @endfor
                         
-                        @for(var dateEntry : dateGroups.entrySet())
-                            <th data-test-date="${dateEntry.getKey()}" colspan="${dateEntry.getValue().size()}">${dateEntry.getKey()}</th>
-                        @endfor
-                    </tr>
-                    <%-- Second header row: time slot headers only --%>
-                    <tr>
-                        @for(var timeSlot : step2FormData.timeSlots())
-                        <th data-test-time data-test-date="${timeSlot.date()}" data-test-start-time="${timeSlot.startTime()}" data-test-end-time="${timeSlot.endTime()}">
-                            ${timeSlot.startTime()} - ${timeSlot.endTime()}
-                        </th>
-                        @endfor
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>
-                            <input type="text" data-test="participant-name" placeholder="Enter your name" />
-                        </td>
-                        @for(var timeSlot : step2FormData.timeSlots())
-                        <td>
-                            <input type="checkbox" />
-                        </td>
-                        @endfor
-                    </tr>
-                </tbody>
-            </table>
+                        <%-- New participant input row --%>
+                        <tr>
+                            <td>
+                                <input type="text" name="participantName" data-test="participant-name" placeholder="Enter your name" required />
+                            </td>
+                            @for(int i = 0; i < step2FormData.timeSlots().size(); i++)
+                            <td>
+                                <input type="checkbox" name="selectedSlots" value="${i}" />
+                            </td>
+                            @endfor
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <button type="submit" data-test="save-participant-button" class="button">Save</button>
+            </form>
         </div>
 
         <div class="summary-section" data-test-section="organizer-details">
