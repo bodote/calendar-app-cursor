@@ -95,6 +95,34 @@
             transform: scale(1.2);
         }
     </style>
+    <script>
+        function deleteParticipant(participantName) {
+            if (confirm('Are you sure you want to delete participant "' + participantName + '"?')) {
+                // Create a form to send DELETE request
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = window.location.pathname + '/participants/delete';
+                
+                // Add hidden method field for DELETE
+                const methodField = document.createElement('input');
+                methodField.type = 'hidden';
+                methodField.name = '_method';
+                methodField.value = 'DELETE';
+                form.appendChild(methodField);
+                
+                // Add participant name field
+                const nameField = document.createElement('input');
+                nameField.type = 'hidden';
+                nameField.name = 'participantName';
+                nameField.value = participantName;
+                form.appendChild(nameField);
+                
+                // Submit the form
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+    </script>
 </head>
 <body>
     <img src="/woodle-logo.jpeg" alt="Woodle Logo" class="logo">
@@ -139,6 +167,8 @@
                             @for(var dateEntry : dateGroups.entrySet())
                                 <th data-test-date="${dateEntry.getKey()}" colspan="${dateEntry.getValue().size()}">${dateEntry.getKey()}</th>
                             @endfor
+                            <%-- Delete column header - empty as specified in requirement --%>
+                            <th rowspan="2"></th>
                         </tr>
                         <%-- Second header row: time slot headers only --%>
                         <tr>
@@ -147,6 +177,7 @@
                                 ${timeSlot.startTime()} - ${timeSlot.endTime()}
                             </th>
                             @endfor
+                            <%-- Empty cell for delete column in second header row --%>
                         </tr>
                     </thead>
                     <tbody>
@@ -164,6 +195,12 @@
                                     @endif
                                 </td>
                             @endfor
+                            <%-- Delete button for existing participants --%>
+                            <td>
+                                <button type="button" data-test="delete-participant-button" onclick="deleteParticipant('${participant.name()}')">
+                                    <img src="/trashcan.svg" alt="Delete" style="width: 16px; height: 16px;" />
+                                </button>
+                            </td>
                         </tr>
                         @endfor
                         
@@ -177,6 +214,8 @@
                                 <input type="checkbox" name="selectedSlots" value="${i}" />
                             </td>
                             @endfor
+                            <%-- Empty cell for delete column in new participant row --%>
+                            <td></td>
                         </tr>
                     </tbody>
                 </table>
